@@ -5,6 +5,7 @@
   "description": "Discord bot for Lil Gargs NFT community with verification and AI chat features",
   "scripts": {
     "start": "node src/index.js",
+    "build": "npm run deploy-commands",
     "dev": "nodemon src/index.js",
     "deploy-commands": "node src/deploy-commands.js",
     "test": "echo \"Error: no test specified\" && exit 1"

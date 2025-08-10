@@ -1,0 +1,23 @@
+# fly.toml app configuration file generated for lil-gargs-bot on 2025-08-10T01:44:24+01:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'lil-gargs-bot'
+primary_region = 'iad'
+
+[build]
+  builder = "heroku/buildpacks:20"
+
+[deploy]
+  release_command = 'npm run deploy-commands'
+
+[env]
+  NODE_ENV = 'production'
+
+# No HTTP service needed for Discord bot
+
+[[vm]]
+  memory = '1gb'
+  cpu_kind = 'shared'
+  cpus = 1
