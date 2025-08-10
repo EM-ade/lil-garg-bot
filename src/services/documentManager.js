@@ -349,7 +349,7 @@ class DocumentManager {
         {
           $search: {
             index: "vector_index",
-            knnBeta: {
+            knn: {
               vector: queryEmbedding,
               path: "embeddings.vector",
               k: limit * 2, // Retrieve more candidates for filtering

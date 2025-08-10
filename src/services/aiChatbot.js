@@ -11,6 +11,18 @@ class AIChatbot {
     this.documentManager = new DocumentManager();
     this.maxContextLength = 4000; // Maximum characters for context
     this.systemPrompt = this.buildSystemPrompt();
+    this.generalSystemPrompt = this.buildGeneralSystemPrompt();
+  }
+
+  /**
+   * Build the system prompt for the general AI
+   */
+  buildGeneralSystemPrompt() {
+    return `You are a helpful AI assistant.
+1. Always be helpful and friendly.
+2. Keep responses concise but informative.
+3. Do not make up or hallucinate any information.
+4. Maintain a positive and engaging tone.`;
   }
 
   /**
@@ -171,6 +183,28 @@ Please provide a helpful response based on the knowledge base context above. If 
         documentsUsed: 0,
         error: error.message,
       };
+    }
+  }
+
+  /**
+   * Generate AI response based on user query
+   */
+  async generateGeneralResponse(userQuery) {
+    try {
+      const prompt = `${this.generalSystemPrompt}
+
+USER QUESTION: ${userQuery}`;
+
+      const result = await this.model.generateContent(prompt);
+      const response = result.response;
+      const text = response.text();
+
+      return {
+        response: text,
+      };
+    } catch (error) {
+      logger.error("Error generating general AI response:", error);
+      throw new Error("Failed to generate AI response");
     }
   }
 

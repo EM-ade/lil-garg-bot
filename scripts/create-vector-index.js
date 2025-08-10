@@ -34,7 +34,7 @@ async function createVectorIndex() {
           {
             type: "vector",
             path: "embeddings.vector",
-            numDimensions: 1536, // Match the embedding model's dimensions, e.g., 1536 for OpenAI Ada v2
+            numDimensions: 768, // Match the embedding model's dimensions, e.g., 768 for embedding-001
             similarity: "cosine",
           },
         ],
