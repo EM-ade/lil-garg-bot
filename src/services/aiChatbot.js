@@ -37,33 +37,11 @@ You represent the Lil Gargs community, so maintain a positive and engaging tone 
   async findRelevantDocuments(query, maxDocuments = 5) {
     try {
       logger.info(`Searching for documents relevant to query: "${query}"`);
-
-      // Search documents using improved search functionality
       const searchResults = await this.documentManager.searchDocuments(query, {
         limit: maxDocuments,
         activeOnly: true,
       });
-
       logger.info(`Found ${searchResults.length} documents from search`);
-
-      // If no results from search, try to get recent documents as fallback
-      if (searchResults.length === 0) {
-        logger.info(
-          "No search results found, falling back to recent documents"
-        );
-        const recentDocs = await this.documentManager.getDocuments({
-          limit: Math.min(maxDocuments, 3),
-          activeOnly: true,
-          sortBy: "lastUsed",
-          sortOrder: -1,
-        });
-
-        logger.info(
-          `Fallback returned ${recentDocs.documents.length} recent documents`
-        );
-        return recentDocs.documents;
-      }
-
       return searchResults;
     } catch (error) {
       logger.error("Error finding relevant documents:", error);
@@ -74,7 +52,7 @@ You represent the Lil Gargs community, so maintain a positive and engaging tone 
   /**
    * Extract relevant content from documents for context
    */
-  async extractRelevantContent(documents, query) {
+  async extractRelevantContent(documents) {
     let context = "";
     let totalLength = 0;
 
@@ -84,34 +62,31 @@ You represent the Lil Gargs community, so maintain a positive and engaging tone 
         const fullDoc = await Document.findById(doc._id);
         if (!fullDoc || !fullDoc.content) continue;
 
-        // For now, we'll use simple text matching to find relevant sections
-        // In a more advanced implementation, you would use vector similarity
         const content = fullDoc.content;
-        const queryWords = query.toLowerCase().split(" ");
-
-        // Find paragraphs that contain query words
-        const paragraphs = content.split("\n\n");
-        const relevantParagraphs = paragraphs.filter((paragraph) => {
-          const lowerParagraph = paragraph.toLowerCase();
-          return queryWords.some((word) => lowerParagraph.includes(word));
-        });
-
-        // If no relevant paragraphs found, take the first few paragraphs
-        const contentToAdd =
-          relevantParagraphs.length > 0
-            ? relevantParagraphs.slice(0, 3).join("\n\n")
-            : paragraphs.slice(0, 2).join("\n\n");
-
-        const docContext = `\n--- From "${fullDoc.title}" ---\n${contentToAdd}\n`;
+        const docContext = `
+--- From "${fullDoc.title}" ---
+${content}
+`;
 
         if (totalLength + docContext.length <= this.maxContextLength) {
           context += docContext;
           totalLength += docContext.length;
-
-          // Increment usage count
           await fullDoc.incrementUsage();
         } else {
-          break;
+          // If adding the full document exceeds the context, try adding a summary
+          const summary = 
+            content.length > 500 ? content.substring(0, 500) + "..." : content;
+          const summaryContext = `
+--- From "${fullDoc.title}" ---
+${summary}
+`;
+          if (totalLength + summaryContext.length <= this.maxContextLength) {
+            context += summaryContext;
+            totalLength += summaryContext.length;
+            await fullDoc.incrementUsage();
+          } else {
+            break; // Stop if even the summary is too long
+          }
         }
       } catch (error) {
         logger.error(`Error processing document ${doc._id}:`, error);
@@ -174,8 +149,7 @@ Please provide a helpful response based on the knowledge base context above. If 
 
       // Extract relevant content
       const context = await this.extractRelevantContent(
-        relevantDocs,
-        userQuery
+        relevantDocs
       );
 
       // Generate AI response

@@ -9,6 +9,7 @@ const { setupDatabase } = require("./database/connection");
 const logger = require("./utils/logger");
 const ErrorHandler = require("./utils/errorHandler");
 const rateLimiter = require("./utils/rateLimiter");
+const chatManager = require("./services/chatManager");
 
 // Setup global error handlers
 ErrorHandler.setupGlobalErrorHandlers();
@@ -79,6 +80,15 @@ class LilGargsBot {
           error,
           interaction.commandName
         );
+      }
+    });
+
+    this.client.on("messageCreate", async (message) => {
+      if (message.author.bot) return;
+
+      if (message.mentions.has(this.client.user)) {
+        const response = chatManager.getRandomResponse();
+        await message.channel.send(response);
       }
     });
 

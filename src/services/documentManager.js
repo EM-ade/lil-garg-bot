@@ -3,6 +3,8 @@ const path = require("path");
 const crypto = require("crypto");
 const { Document } = require("../database/models");
 const logger = require("../utils/logger");
+const { GoogleGenerativeAI } = require("@google/generative-ai");
+const config = require("../config/environment");
 
 class DocumentManager {
   constructor() {
@@ -11,6 +13,10 @@ class DocumentManager {
     this.allowedExtensions = [".txt", ".md", ".pdf", ".docx", ".json"];
     this.chunkSize = 1000; // Characters per chunk for embeddings
     this.chunkOverlap = 200; // Overlap between chunks
+    this.genAI = new GoogleGenerativeAI(config.ai.geminiApiKey);
+    this.embeddingModel = this.genAI.getGenerativeModel({
+      model: "embedding-001",
+    });
   }
 
   /**
@@ -200,7 +206,21 @@ class DocumentManager {
   }
 
   /**
-   * Process document for embeddings (placeholder for now)
+   * Generate embedding for a text chunk
+   */
+  async generateEmbedding(text) {
+    try {
+      const result = await this.embeddingModel.embedContent(text);
+      const embedding = result.embedding;
+      return embedding.values;
+    } catch (error) {
+      logger.error("Error generating embedding:", error);
+      throw new Error("Failed to generate embedding");
+    }
+  }
+
+  /**
+   * Process document for embeddings
    */
   async processDocumentForEmbeddings(documentId) {
     try {
@@ -214,14 +234,19 @@ class DocumentManager {
       // Split content into chunks
       const chunks = this.splitTextIntoChunks(document.content);
 
-      // For now, we'll just store the chunks without actual embeddings
-      // In a real implementation, you would generate embeddings using an embedding model
-      document.embeddings = chunks.map((chunk, index) => ({
-        chunk,
-        vector: [], // Placeholder for actual embeddings
-        chunkIndex: index,
-      }));
+      // Generate embeddings for each chunk
+      const embeddings = [];
+      for (let i = 0; i < chunks.length; i++) {
+        const chunk = chunks[i];
+        const vector = await this.generateEmbedding(chunk);
+        embeddings.push({
+          chunk,
+          vector,
+          chunkIndex: i,
+        });
+      }
 
+      document.embeddings = embeddings;
       await document.updateProcessingStatus("completed");
 
       logger.info(`Document processed for embeddings: ${document.filename}`);
@@ -235,139 +260,144 @@ class DocumentManager {
   }
 
   /**
-   * Search documents by text query
+   * Search documents by vector similarity
    */
   async searchDocuments(query, options = {}) {
     try {
-      const {
-        limit = 10,
-        category = null,
-        tags = null,
-        activeOnly = true,
-      } = options;
+      const { limit = 5, minScore = 0.75 } = options;
 
-      // First try text search
-      let documents = await this.performTextSearch(query, {
+      // First, try vector search
+      const vectorResults = await this.searchDocumentsByVector(query, {
+        ...options,
         limit,
-        category,
-        tags,
-        activeOnly,
       });
 
-      // If text search fails or returns no results, try fallback search
-      if (documents.length === 0) {
+      // Filter by score and check if we have good results
+      const highQualityResults = vectorResults.filter(
+        (doc) => doc.score >= minScore
+      );
+
+      if (highQualityResults.length > 0) {
         logger.info(
-          `Text search returned no results for query: "${query}". Trying fallback search.`
+          `Vector search returned ${highQualityResults.length} high-quality results.`
         );
-        documents = await this.performFallbackSearch(query, {
-          limit,
-          category,
-          tags,
-          activeOnly,
-        });
+        return highQualityResults;
       }
 
-      return documents;
+      // If vector search yields no high-quality results, try text search
+      logger.info(
+        "Vector search returned no high-quality results, falling back to text search."
+      );
+      const textResults = await this.searchDocumentsByText(query, options);
+
+      // Combine and de-duplicate results
+      const combinedResults = [...vectorResults, ...textResults];
+      const uniqueResults = Array.from(
+        new Map(combinedResults.map((doc) => [doc._id.toString(), doc])).values()
+      );
+
+      // Sort by score if available, otherwise, we can't sort reliably
+      uniqueResults.sort((a, b) => (b.score || 0) - (a.score || 0));
+
+      return uniqueResults.slice(0, limit);
     } catch (error) {
-      logger.error("Error searching documents:", error);
-      // Return empty array instead of throwing to prevent breaking the chat
-      return [];
+      logger.error("Error in hybrid search:", error);
+      // If hybrid search fails, fall back to simple text search
+      return this.searchDocumentsByText(query, options);
     }
   }
 
   /**
-   * Perform MongoDB text search
+   * Perform a text-based search on documents
    */
-  async performTextSearch(query, options) {
+  async searchDocumentsByText(query, options = {}) {
     try {
-      const { limit, category, tags, activeOnly } = options;
-
+      const { limit = 10, category = null, tags = null, activeOnly = true } = options;
       const searchFilter = {
         $text: { $search: query },
+        ...(activeOnly && { isActive: true }),
+        ...(category && { category }),
+        ...(tags && { tags: { $in: tags } }),
       };
 
-      if (activeOnly) {
-        searchFilter.isActive = true;
-      }
-
-      if (category) {
-        searchFilter.category = category;
-      }
-
-      if (tags && tags.length > 0) {
-        searchFilter.tags = { $in: tags };
-      }
-
-      const documents = await Document.find(searchFilter)
-        .select("title filename description category tags usageCount lastUsed")
+      const documents = await Document.find(searchFilter, {
+        score: { $meta: "textScore" },
+      })
+        .sort({ score: { $meta: "textScore" } })
         .limit(limit)
-        .sort({ score: { $meta: "textScore" } });
+        .select("title filename description category tags usageCount lastUsed score");
 
-      logger.info(
-        `Text search found ${documents.length} documents for query: "${query}"`
-      );
+      logger.info(`Text search found ${documents.length} documents for query: "${query}"`);
       return documents;
     } catch (error) {
-      logger.warn(
-        "Text search failed, likely due to missing text index:",
-        error.message
-      );
+      logger.error(`Text search failed for query "${query}":`, error);
       return [];
     }
   }
 
   /**
-   * Perform fallback search using regex when text search is not available
+   * Search documents by vector similarity
    */
-  async performFallbackSearch(query, options) {
+  async searchDocumentsByVector(query, options) {
     try {
       const { limit, category, tags, activeOnly } = options;
 
-      // Create regex patterns for case-insensitive search
-      const queryWords = query
-        .toLowerCase()
-        .split(/\s+/)
-        .filter((word) => word.length > 2);
-      if (queryWords.length === 0) {
-        return [];
-      }
+      // Generate embedding for the query
+      const queryEmbedding = await this.generateEmbedding(query);
 
-      const regexPatterns = queryWords.map(
-        (word) => new RegExp(word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i")
-      );
+      const pipeline = [
+        {
+          $search: {
+            index: "vector_index",
+            knnBeta: {
+              vector: queryEmbedding,
+              path: "embeddings.vector",
+              k: limit * 2, // Retrieve more candidates for filtering
+            },
+          },
+        },
+        {
+          $project: {
+            title: 1,
+            filename: 1,
+            description: 1,
+            category: 1,
+            tags: 1,
+            usageCount: 1,
+            lastUsed: 1,
+            isActive: 1,
+            isProcessed: 1,
+            score: { $meta: "searchScore" },
+          },
+        },
+      ];
 
-      const searchFilter = {
-        $or: [
-          { title: { $in: regexPatterns } },
-          { content: { $in: regexPatterns } },
-          { description: { $in: regexPatterns } },
-        ],
-      };
-
+      const filterStage = [];
       if (activeOnly) {
-        searchFilter.isActive = true;
+        filterStage.push({ $match: { isActive: true, isProcessed: true } });
       }
-
       if (category) {
-        searchFilter.category = category;
+        filterStage.push({ $match: { category: category } });
       }
-
       if (tags && tags.length > 0) {
-        searchFilter.tags = { $in: tags };
+        filterStage.push({ $match: { tags: { $in: tags } } });
       }
 
-      const documents = await Document.find(searchFilter)
-        .select("title filename description category tags usageCount lastUsed")
-        .limit(limit)
-        .sort({ lastUsed: -1, createdAt: -1 });
+      if (filterStage.length > 0) {
+        pipeline.push(...filterStage);
+      }
+      
+      pipeline.push({ $limit: limit });
 
-      logger.info(
-        `Fallback search found ${documents.length} documents for query: "${query}"`
-      );
+      const documents = await Document.aggregate(pipeline);
+
+      logger.info(`Vector search found ${documents.length} documents`);
       return documents;
     } catch (error) {
-      logger.error("Fallback search failed:", error);
-      return [];
+      logger.error("Vector search failed:", error);
+      // Fallback to text search if vector search fails
+      logger.info("Falling back to text search due to vector search error.");
+      return this.searchDocumentsByText(query, options);
     }
   }
 

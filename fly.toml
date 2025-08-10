@@ -6,9 +6,6 @@
 app = 'lil-gargs-bot'
 primary_region = 'iad'
 
-[build]
-  builder = "heroku/buildpacks:20"
-
 [deploy]
   release_command = 'npm run deploy-commands'
 
