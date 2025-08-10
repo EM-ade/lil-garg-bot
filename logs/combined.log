@@ -1,0 +1,9 @@
+{"level":"info","message":"Connected to MongoDB successfully","service":"lil-gargs-bot","timestamp":"2025-08-10 00:59:18"}
+{"level":"info","message":"Loaded command: add-document","service":"lil-gargs-bot","timestamp":"2025-08-10 00:59:18"}
+{"level":"info","message":"Loaded command: ask","service":"lil-gargs-bot","timestamp":"2025-08-10 00:59:18"}
+{"level":"info","message":"Loaded command: list-documents","service":"lil-gargs-bot","timestamp":"2025-08-10 00:59:18"}
+{"level":"info","message":"Loaded command: remove-document","service":"lil-gargs-bot","timestamp":"2025-08-10 00:59:18"}
+{"level":"info","message":"Loaded command: status","service":"lil-gargs-bot","timestamp":"2025-08-10 00:59:18"}
+{"level":"info","message":"Loaded command: verify","service":"lil-gargs-bot","timestamp":"2025-08-10 00:59:18"}
+{"level":"info","message":"Lil Gargs Bot initialized successfully!","service":"lil-gargs-bot","timestamp":"2025-08-10 00:59:21"}
+{"level":"info","message":"Bot is ready! Logged in as Lil Gargs Bot#3286","service":"lil-gargs-bot","timestamp":"2025-08-10 00:59:21"}
