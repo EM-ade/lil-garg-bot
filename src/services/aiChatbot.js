@@ -6,12 +6,18 @@ const logger = require("../utils/logger");
 
 class AIChatbot {
   constructor() {
+    if (!config.ai.geminiApiKey) {
+      throw new Error(
+        "GEMINI_API_KEY is not configured. Please check your .env file."
+      );
+    }
     this.genAI = new GoogleGenerativeAI(config.ai.geminiApiKey);
     this.model = this.genAI.getGenerativeModel({ model: config.ai.model });
     this.documentManager = new DocumentManager();
     this.maxContextLength = 4000; // Maximum characters for context
     this.systemPrompt = this.buildSystemPrompt();
     this.generalSystemPrompt = this.buildGeneralSystemPrompt();
+    this.oracleSystemPrompt = this.buildOracleSystemPrompt();
   }
 
   /**
@@ -29,18 +35,41 @@ class AIChatbot {
    * Build the system prompt for the AI
    */
   buildSystemPrompt() {
-    return `You are an AI assistant for the Lil Gargs NFT community. Your role is to answer questions about Lil Gargs based ONLY on the provided knowledge base documents.
+    return `You are an AI assistant. Your role is to answer questions based ONLY on the provided knowledge base documents.
 
 IMPORTANT RULES:
-1. ONLY answer questions using information from the provided documents
-2. If the information is not in the documents, say "I don't have information about that in my knowledge base"
-3. Always be helpful, friendly, and community-focused
-4. When referencing information, mention it comes from the knowledge base
-5. Do not make up or hallucinate any information
-6. Keep responses concise but informative
-7. If asked about topics unrelated to Lil Gargs, politely redirect to Lil Gargs topics
+1. ONLY answer questions using information from the provided documents.
+2. If the information is not in the documents, say "I don't have information about that in my knowledge base."
+3. Always be helpful and friendly.
+4. When referencing information, mention it comes from the knowledge base.
+5. Do not make up or hallucinate any information.
+6. Keep responses concise but informative.
+7. If asked about topics unrelated to the documents, politely state that you can only answer questions about the provided context.
 
-You represent the Lil Gargs community, so maintain a positive and engaging tone while being accurate and truthful.`;
+Maintain a positive and engaging tone while being accurate and truthful.`;
+  }
+
+  /**
+   * Build the system prompt for the mystical oracle
+   */
+  buildOracleSystemPrompt() {
+    return `You are the mystical Garg Oracle, an ancient and wise entity that provides fortune-telling and mystical guidance. You speak in a mystical, enchanting manner with:
+
+ORACLE CHARACTERISTICS:
+- Poetic and mysterious language
+- References to cosmic forces, stars, moon, and ancient wisdom
+- Fortune-telling style predictions and guidance
+- Encouraging but mystical tone
+- Use of mystical emojis and symbols (🔮, ✨, 🌙, ⭐, 🌟, 💫)
+
+RESPONSE STYLE:
+- Provide entertaining fortune-telling responses that are positive and uplifting
+- Maintain the mystical theme throughout
+- Keep responses engaging and fun, around 100-200 words
+- Include elements of destiny, cosmic alignment, and spiritual guidance
+- Always end on a hopeful or empowering note
+
+Remember: You are an oracle providing mystical entertainment, not real fortune-telling. Keep responses fun and positive.`;
   }
 
   /**
@@ -86,7 +115,7 @@ ${content}
           await fullDoc.incrementUsage();
         } else {
           // If adding the full document exceeds the context, try adding a summary
-          const summary = 
+          const summary =
             content.length > 500 ? content.substring(0, 500) + "..." : content;
           const summaryContext = `
 --- From "${fullDoc.title}" ---
@@ -153,16 +182,14 @@ Please provide a helpful response based on the knowledge base context above. If 
       if (relevantDocs.length === 0) {
         return {
           response:
-            "I don't have any information about that in my knowledge base. Please make sure documents about Lil Gargs have been added to help me answer your questions!",
+            "I don't have any information about that in my knowledge base. Please make sure relevant documents have been added to help me answer your questions!",
           hasContext: false,
           documentsUsed: 0,
         };
       }
 
       // Extract relevant content
-      const context = await this.extractRelevantContent(
-        relevantDocs
-      );
+      const context = await this.extractRelevantContent(relevantDocs);
 
       // Generate AI response
       const aiResult = await this.generateResponse(userQuery, context);
@@ -299,6 +326,137 @@ USER QUESTION: ${userQuery}`;
         processedDocuments: 0,
         processingRate: 0,
       };
+    }
+  }
+
+  /**
+   * Generate mystical oracle response
+   */
+  async generateOracleResponse(userQuery) {
+    try {
+      const prompt = `${this.oracleSystemPrompt}
+
+USER SEEKS GUIDANCE: ${userQuery}
+
+Provide a mystical oracle response that offers guidance, wisdom, and positive fortune-telling insights. Remember to maintain the mystical theme and keep it entertaining and uplifting.`;
+
+      const result = await this.model.generateContent(prompt);
+      const response = result.response;
+      const text = response.text();
+
+      return {
+        response: text,
+        mode: "oracle",
+        timestamp: new Date(),
+      };
+    } catch (error) {
+      logger.error("Error generating oracle response:", error);
+      throw new Error(
+        "The mystical energies are disrupted. Please try again later."
+      );
+    }
+  }
+
+  /**
+   * Generate a personalized welcome message for new members
+   */
+  async generateWelcomeMessage(member, serverInfo = {}) {
+    try {
+      const welcomePrompt = `You are a friendly AI assistant for the Lil Gargs Discord server. Generate a personalized welcome message for a new member.
+
+MEMBER INFO:
+- Username: ${member.user.username}
+- Display Name: ${member.displayName}
+- Account Created: ${member.user.createdAt.toLocaleDateString()}
+- Server Joined: ${member.joinedAt.toLocaleDateString()}
+
+SERVER INFO:
+- Server Name: ${serverInfo.name || 'Lil Gargs'}
+- Server Focus: NFT community, pet system, battle system, AI chat
+- Key Features: NFT verification, pet adoption, battles, AI-powered assistance
+
+REQUIREMENTS:
+1. Make it personal and welcoming
+2. Mention their username specifically
+3. Highlight key server features (NFTs, pets, battles, AI)
+4. Keep it under 150 words
+5. Use friendly, enthusiastic tone
+6. Include relevant emojis (🐲, 💎, ⚔️, 🤖, 🎮)
+7. Encourage them to explore the server
+8. Make them feel excited to be part of the community
+
+Generate a warm, engaging welcome message:`;
+
+      const result = await this.model.generateContent(welcomePrompt);
+      const response = await result.response;
+      return response.text();
+    } catch (error) {
+      logger.error("Error generating welcome message:", error);
+      // Fallback welcome message
+      return `🎉 Welcome to Lil Gargs, **${member.user.username}**! 🐲
+
+We're thrilled to have you join our amazing community! Here you'll find:
+🐲 **Pet System** - Adopt and train your own Lil Garg
+⚔️ **Battle Arena** - Challenge other members in epic battles  
+💎 **NFT Verification** - Connect your wallet and unlock exclusive roles
+🤖 **AI Assistant** - Get help with \`/askgarg\` or mystical guidance with \`/gargoracle\`
+
+Jump right in and start exploring! Use \`/pet adopt [name]\` to get your first companion, or \`/battle start @user\` to challenge someone to a duel. 
+
+Welcome to the family! 🎊`;
+    }
+  }
+
+  /**
+   * Generate a server introduction message
+   */
+  async generateServerIntroduction(serverInfo = {}) {
+    try {
+      const introPrompt = `You are an AI assistant for the Lil Gargs Discord server. Generate an engaging server introduction message.
+
+SERVER INFO:
+- Server Name: ${serverInfo.name || 'Lil Gargs'}
+- Focus: NFT community with gaming elements
+- Key Features: NFT verification, pet system, battle system, AI assistance
+
+REQUIREMENTS:
+1. Explain what the server is about
+2. Highlight the unique features (NFTs + gaming)
+3. Explain how to get started
+4. Keep it informative but fun
+5. Use relevant emojis and formatting
+6. Under 200 words
+7. Make it exciting and welcoming
+
+Generate an engaging server introduction:`;
+
+      const result = await this.model.generateContent(introPrompt);
+      const response = await result.response;
+      return response.text();
+    } catch (error) {
+      logger.error("Error generating server introduction:", error);
+      // Fallback introduction
+      return `🌟 **Welcome to Lil Gargs!** 🌟
+
+**What is Lil Gargs?**
+Lil Gargs is a unique Discord community that combines the exciting world of NFTs with engaging gaming mechanics! 🐲💎
+
+**🎮 What You'll Find Here:**
+• **Pet System** - Adopt, train, and battle with your own Lil Garg companion
+• **NFT Verification** - Connect your wallet to unlock exclusive channels and roles
+• **Battle Arena** - Challenge other members in turn-based combat
+• **AI Assistant** - Get help and mystical guidance from our AI-powered bot
+
+**🚀 Getting Started:**
+1. Use \`/pet adopt [name]\` to get your first Lil Garg
+2. Connect your wallet for NFT verification
+3. Explore the server and meet other members
+4. Challenge someone to a battle with \`/battle start @user\`
+
+**💎 NFT Benefits:**
+Verified holders get access to exclusive channels, special roles, and enhanced features!
+
+Ready to begin your adventure? Let's get started! 🎊`;
     }
   }
 }

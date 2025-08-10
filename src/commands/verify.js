@@ -2,6 +2,7 @@ const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const { User } = require('../database/models');
 const NFTVerificationService = require('../services/nftVerification');
 const RoleManager = require('../utils/roleManager');
+const EmbedBuilderUtil = require('../utils/embedBuilder');
 const logger = require('../utils/logger');
 
 module.exports = {
@@ -66,16 +67,7 @@ module.exports = {
                     { upsert: true, new: true }
                 );
 
-                const embed = new EmbedBuilder()
-                    .setColor('#ff0000')
-                    .setTitle('❌ Verification Failed')
-                    .setDescription('No Lil Gargs NFTs found in your wallet.')
-                    .addFields(
-                        { name: 'Wallet Address', value: `\`${walletAddress}\``, inline: false },
-                        { name: 'NFTs Found', value: '0', inline: true },
-                        { name: 'Status', value: 'Not Verified', inline: true }
-                    )
-                    .setTimestamp();
+                const embed = EmbedBuilderUtil.createVerificationEmbed(walletAddress, 0, 'failed');
 
                 return await interaction.editReply({ embeds: [embed] });
             }

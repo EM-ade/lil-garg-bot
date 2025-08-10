@@ -40,6 +40,14 @@ class DocumentManager {
   }
 
   /**
+   * Check if content is likely binary
+   */
+  isBinary(content) {
+    // A simple check for null bytes is a good indicator
+    return content.includes('\u0000');
+  }
+
+  /**
    * Validate file before processing
    */
   validateFile(filename, content) {
@@ -61,6 +69,10 @@ class DocumentManager {
 
     if (content.length === 0) {
       throw new Error("File is empty");
+    }
+
+    if (this.isBinary(content)) {
+      throw new Error("Binary files are not supported.");
     }
   }
 
