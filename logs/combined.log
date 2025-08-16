@@ -350,3 +350,56 @@
 {"level":"info","message":"Cleanup manager started successfully","service":"lil-gargs-bot","timestamp":"2025-08-10 15:49:24"}
 {"level":"info","message":"Scheduled cleanup completed","service":"lil-gargs-bot","timestamp":"2025-08-10 15:49:25"}
 {"level":"info","message":"SIGINT received, shutting down gracefully","service":"lil-gargs-bot","timestamp":"2025-08-10 15:50:02"}
+{"level":"info","message":"Starting scheduled cleanup...","service":"lil-gargs-bot","timestamp":"2025-08-16 15:27:51"}
+{"level":"info","message":"Scheduled cleanup completed","service":"lil-gargs-bot","timestamp":"2025-08-16 15:27:51"}
+{"level":"info","message":"Cleanup manager initialized","service":"lil-gargs-bot","timestamp":"2025-08-16 15:27:51"}
+{"level":"info","message":"Connected to MongoDB successfully","service":"lil-gargs-bot","timestamp":"2025-08-16 15:27:54"}
+{"level":"info","message":"Text index already exists for documents collection","service":"lil-gargs-bot","timestamp":"2025-08-16 15:27:54"}
+{"level":"info","message":"Loaded command: add-document","service":"lil-gargs-bot","timestamp":"2025-08-16 15:27:54"}
+{"level":"info","message":"Loaded command: admin","service":"lil-gargs-bot","timestamp":"2025-08-16 15:27:54"}
+{"level":"info","message":"Loaded command: askgarg","service":"lil-gargs-bot","timestamp":"2025-08-16 15:27:54"}
+{"level":"info","message":"Loaded command: askgarg","service":"lil-gargs-bot","timestamp":"2025-08-16 15:27:55"}
+{"level":"info","message":"Loaded command: battle","service":"lil-gargs-bot","timestamp":"2025-08-16 15:27:55"}
+{"level":"info","message":"Loaded command: chat","service":"lil-gargs-bot","timestamp":"2025-08-16 15:27:55"}
+{"level":"info","message":"Loaded command: cleanup","service":"lil-gargs-bot","timestamp":"2025-08-16 15:27:55"}
+{"level":"info","message":"Loaded command: config","service":"lil-gargs-bot","timestamp":"2025-08-16 15:27:56"}
+{"level":"info","message":"Loaded command: debug-search","service":"lil-gargs-bot","timestamp":"2025-08-16 15:27:56"}
+{"level":"info","message":"Loaded command: gargoracle","service":"lil-gargs-bot","timestamp":"2025-08-16 15:27:56"}
+{"level":"info","message":"Loaded command: help","service":"lil-gargs-bot","timestamp":"2025-08-16 15:27:56"}
+{"level":"info","message":"Loaded command: list-documents","service":"lil-gargs-bot","timestamp":"2025-08-16 15:27:56"}
+{"level":"info","message":"Loaded command: lockdown","service":"lil-gargs-bot","timestamp":"2025-08-16 15:27:56"}
+{"level":"info","message":"Loaded command: nft-monitor","service":"lil-gargs-bot","timestamp":"2025-08-16 15:27:56"}
+{"level":"info","message":"Loaded command: pet-maintenance","service":"lil-gargs-bot","timestamp":"2025-08-16 15:27:56"}
+{"level":"info","message":"Loaded command: pet","service":"lil-gargs-bot","timestamp":"2025-08-16 15:27:56"}
+{"level":"info","message":"Loaded command: place-buttons","service":"lil-gargs-bot","timestamp":"2025-08-16 15:27:56"}
+{"level":"info","message":"Loaded command: remove-document","service":"lil-gargs-bot","timestamp":"2025-08-16 15:27:56"}
+{"level":"info","message":"Loaded command: security","service":"lil-gargs-bot","timestamp":"2025-08-16 15:27:56"}
+{"level":"info","message":"Loaded command: status","service":"lil-gargs-bot","timestamp":"2025-08-16 15:27:56"}
+{"level":"info","message":"Loaded command: ticket","service":"lil-gargs-bot","timestamp":"2025-08-16 15:27:56"}
+{"level":"info","message":"Loaded command: unlock","service":"lil-gargs-bot","timestamp":"2025-08-16 15:27:56"}
+{"level":"info","message":"Loaded command: verify","service":"lil-gargs-bot","timestamp":"2025-08-16 15:27:56"}
+{"level":"info","message":"Loaded command: welcome","service":"lil-gargs-bot","timestamp":"2025-08-16 15:27:56"}
+{"level":"info","message":"Lil Gargs Bot initialized successfully!","service":"lil-gargs-bot","timestamp":"2025-08-16 15:27:59"}
+{"level":"info","message":"Bot is ready! Logged in as Lil Gargs Bot#3286","service":"lil-gargs-bot","timestamp":"2025-08-16 15:28:00"}
+{"level":"info","message":"Starting NFT monitoring service...","service":"lil-gargs-bot","timestamp":"2025-08-16 15:28:00"}
+{"level":"info","message":"Starting comprehensive NFT check...","service":"lil-gargs-bot","timestamp":"2025-08-16 15:28:00"}
+{"level":"info","message":"Checking 0 verified users in guild 1403906075031371776","service":"lil-gargs-bot","timestamp":"2025-08-16 15:28:04"}
+{"level":"info","message":"Checking 0 verified users in guild 1404126315577213009","service":"lil-gargs-bot","timestamp":"2025-08-16 15:28:04"}
+{"level":"info","message":"Checking 0 verified users in guild 1339740164469166111","service":"lil-gargs-bot","timestamp":"2025-08-16 15:28:04"}
+{"level":"info","message":"NFT check completed: 0 users checked, 0 users updated","service":"lil-gargs-bot","timestamp":"2025-08-16 15:28:04"}
+{"level":"info","message":"NFT monitoring service started successfully","service":"lil-gargs-bot","timestamp":"2025-08-16 15:28:04"}
+{"level":"info","message":"NFT monitoring service started successfully","service":"lil-gargs-bot","timestamp":"2025-08-16 15:28:04"}
+{"level":"info","message":"Starting pet maintenance service...","service":"lil-gargs-bot","timestamp":"2025-08-16 15:28:04"}
+{"level":"info","message":"Starting pet maintenance cycle...","service":"lil-gargs-bot","timestamp":"2025-08-16 15:28:04"}
+{"level":"info","message":"Pet maintenance completed: 0 pets checked, 0 pets updated","service":"lil-gargs-bot","timestamp":"2025-08-16 15:28:05"}
+{"level":"info","message":"Pet maintenance service started successfully","service":"lil-gargs-bot","timestamp":"2025-08-16 15:28:05"}
+{"level":"info","message":"Pet maintenance service started successfully","service":"lil-gargs-bot","timestamp":"2025-08-16 15:28:05"}
+{"level":"info","message":"Starting scheduled cleanup...","service":"lil-gargs-bot","timestamp":"2025-08-16 15:28:05"}
+{"level":"info","message":"Cleanup manager initialized","service":"lil-gargs-bot","timestamp":"2025-08-16 15:28:05"}
+{"level":"info","message":"Cleanup manager started successfully","service":"lil-gargs-bot","timestamp":"2025-08-16 15:28:05"}
+{"level":"info","message":"Scheduled cleanup completed","service":"lil-gargs-bot","timestamp":"2025-08-16 15:28:06"}
+{"level":"info","message":"Status checked by elderhorror (1356652426240852009) - Verified: false","service":"lil-gargs-bot","timestamp":"2025-08-16 15:28:12"}
+{"level":"info","message":"NFT verification for ABjnax7QfDmG6wR2KJoNc3UyiouwTEZ3b5tnTrLLyNSp: NOT VERIFIED (0 NFTs)","service":"lil-gargs-bot","timestamp":"2025-08-16 15:28:25"}
+{"level":"info","message":"AI chat from elderhorror (1356652426240852009): \"What's is good\" - Response length: 58","service":"lil-gargs-bot","timestamp":"2025-08-16 15:28:42"}
+{"channelId":"1404126316068081797","error":"handleError is not a function","guildId":"1404126315577213009","level":"error","message":"Error in command askgarg:","service":"lil-gargs-bot","stack":"TypeError: handleError is not a function\n    at Object.execute (C:\\Users\\ElderHorror\\Documents\\lil-garg-bot\\src\\commands\\askgarg.js:49:13)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async Client.<anonymous> (C:\\Users\\ElderHorror\\Documents\\lil-garg-bot\\src\\index.js:114:11)","timestamp":"2025-08-16 15:29:02","userId":"1356652426240852009","username":"elderhorror"}
+{"level":"info","message":"SIGINT received, shutting down gracefully","service":"lil-gargs-bot","timestamp":"2025-08-16 15:29:18"}
