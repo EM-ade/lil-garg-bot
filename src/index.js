@@ -3,9 +3,11 @@ const mongoose = require("mongoose");
 const winston = require("winston");
 require("dotenv").config();
 
+console.log(`[${new Date().toISOString()}] Bot starting...`);
+
 // Import modules
 const { loadCommands } = require("./utils/commandLoader");
-const { setupDatabase } = require("./database/connection");
+const setupDatabase = require("./database/connection"); // Corrected import
 const logger = require("./utils/logger");
 const ErrorHandler = require("./utils/errorHandler");
 const rateLimiter = require("./utils/rateLimiter");
@@ -53,8 +55,12 @@ class LilGargsBot {
 
   async initialize() {
     try {
+ console.log(`[${new Date().toISOString()}] Attempting to setup database...`);
       // Setup database connection
       await setupDatabase();
+ console.log(`[${new Date().toISOString()}] Database setup complete.`);
+
+ console.log(`[${new Date().toISOString()}] Attempting to load commands...`);
 
       // Load commands
       await loadCommands(this.client);
@@ -63,6 +69,7 @@ class LilGargsBot {
       await this.client.login(process.env.DISCORD_BOT_TOKEN);
 
       logger.info("Lil Gargs Bot initialized successfully!");
+ console.log(`[${new Date().toISOString()}] Bot successfully logged in.`);
     } catch (error) {
       logger.error("Failed to initialize bot:", error);
       process.exit(1);

@@ -1,15 +1,23 @@
 const { EmbedBuilder: DiscordEmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 
+/**
+ * A utility class for creating standardized embeds and action rows.
+ */
 class EmbedBuilder {
+    /**
+     * Creates a base embed with a consistent style.
+     * @param {object} options - The options for the embed.
+     * @returns {DiscordEmbedBuilder}
+     */
     static createMatricaStyleEmbed(options = {}) {
         const embed = new DiscordEmbedBuilder()
-            .setColor(options.color || '#FF6B35') // Lil Gargs brand color (orange)
+            .setColor(options.color || '#FF6B35') // Lil Gargs brand color
             .setTitle(options.title || 'Lil Gargs Bot')
-            .setDescription(options.description || '')
+            .setDescription(options.description || null)
             .setTimestamp()
-            .setFooter({ 
+            .setFooter({
                 text: options.footer || 'powered by Lil Gargs • Custom Bot',
-                iconURL: options.footerIcon || 'https://i.imgur.com/example.png' // Replace with your bot's icon
+                iconURL: options.footerIcon // Add a default icon URL if you have one
             });
 
         if (options.thumbnail) {
@@ -27,296 +35,108 @@ class EmbedBuilder {
         return embed;
     }
 
-    static createVerificationEmbed(walletAddress, nftCount, status) {
-        const embed = this.createMatricaStyleEmbed({
-            title: '🔐 Lil Gargs Verification',
-            description: 'Verify your NFT holder status to access exclusive channels and features.',
-            color: status === 'verified' ? '#00FF00' : '#FF6B35',
-            thumbnail: 'https://i.imgur.com/example.png' // Replace with your verification icon
-        });
-
-        // Add verification checklist with icons like the Matrica style
-        embed.addFields(
-            {
-                name: '🔒 Verify Holder Status',
-                value: [
-                    '☐ This community uses Lil Gargs NFT Holder Verification!',
-                    '☑ To access the gated holder channels, you must meet the requirements set by this community.'
-                ].join('\n'),
-                inline: false
-            },
-            {
-                name: '👉 Instructions',
-                value: [
-                    '**Click here** to make your Lil Gargs profile and get started. If you already have a profile, you are all set!',
-                    '💼 Adding a wallet to your Lil Gargs Profile will not give anyone access to your wallet and will only be used to verify your holder status.'
-                ].join('\n'),
-                inline: false
-            }
-        );
-
+    /**
+     * Creates a specific embed for NFT verification status.
+     * @param {string} walletAddress - The user's wallet address.
+     * @param {number} nftCount - The number of NFTs found.
+     * @param {string} status - The verification status ('verified' or 'failed').
+     * @param {string|null} errorMessage - An optional error message for failed status.
+     * @returns {DiscordEmbedBuilder}
+     */
+    static createVerificationEmbed(walletAddress, nftCount, status, errorMessage = null) {
         if (status === 'verified') {
-            embed.addFields({
-                name: '🎉 Verification Status',
-                value: `✅ **VERIFIED** - You own ${nftCount} Lil Gargs NFT${nftCount > 1 ? 's' : ''}`,
-                inline: false
+            return this.createMatricaStyleEmbed({
+                title: '✅ Verification Successful!',
+                description: 'You have been successfully verified as a Lil Gargs holder.',
+                color: '#00FF00', // Green for success
+                fields: [
+                    { name: 'Wallet Address', value: `\`${walletAddress}\``, inline: false },
+                    { name: 'NFTs Found', value: nftCount.toString(), inline: true },
+                    { name: 'Status', value: 'Verified ✅', inline: true }
+                ]
+            });
+        } else {
+            return this.createMatricaStyleEmbed({
+                title: '❌ Verification Failed',
+                description: 'We could not verify your holder status.',
+                color: '#FF0000', // Red for failure
+                fields: [
+                    { name: 'Wallet Address', value: `\`${walletAddress}\``, inline: false },
+                    { name: 'Reason', value: errorMessage || 'No Lil Gargs NFTs were found in this wallet.', inline: false }
+                ]
             });
         }
-
-        return embed;
     }
-
-    static createPetEmbed(pet, action = '') {
-        const moodEmoji = pet.mood === 'happy' ? '😊' : pet.mood === 'sad' ? '😢' : '😐';
-        const energyEmoji = pet.energy > 70 ? '⚡' : pet.energy > 30 ? '🔋' : '🪫';
-
-        const embed = this.createMatricaStyleEmbed({
-            title: `🐲 ${pet.name} - ${pet.element} ${pet.personality}`,
-            description: `${moodEmoji} **Mood:** ${pet.mood} | ${energyEmoji} **Energy:** ${pet.energy}%`,
-            color: this.getElementColor(pet.element),
-            thumbnail: this.getPetAvatar(pet.element)
-        });
-
-        embed.addFields(
-            {
-                name: '📊 Stats',
-                value: [
-                    `⚔️ **Attack:** ${pet.attack}`,
-                    `🛡️ **Defense:** ${pet.defense}`,
-                    `❤️ **Health:** ${pet.health}`,
-                    `⭐ **Level:** ${pet.level}`,
-                    `✨ **XP:** ${pet.xp}/${pet.level * 100}`
-                ].join('\n'),
-                inline: true
-            },
-            {
-                name: '🎯 Actions',
-                value: action || 'Use `/pet` commands to interact with your pet!',
-                inline: true
-            }
-        );
-
-        return embed;
-    }
-
-    static createBattleEmbed(battle, currentTurn) {
-        const embed = this.createMatricaStyleEmbed({
-            title: `⚔️ Battle Arena - ${battle.status}`,
-            description: `**${battle.player1Name}** vs **${battle.player2Name}**`,
-            color: '#FF0000',
-            thumbnail: 'https://i.imgur.com/example.png'
-        });
-
-        embed.addFields(
-            {
-                name: '👤 Player 1',
-                value: `${battle.player1Name}\n❤️ HP: ${battle.player1Health}\n⚔️ Attack: ${battle.player1Attack}`,
-                inline: true
-            },
-            {
-                name: '👤 Player 2',
-                value: `${battle.player2Name}\n❤️ HP: ${battle.player2Health}\n⚔️ Attack: ${battle.player2Attack}`,
-                inline: true
-            },
-            {
-                name: '🎯 Current Turn',
-                value: currentTurn || 'Waiting for players...',
-                inline: false
-            }
-        );
-
-        return embed;
-    }
-
-    static getElementColor(element) {
-        const colors = {
-            'Fire': '#FF4500',
-            'Ice': '#87CEEB',
-            'Nature': '#228B22',
-            'Storm': '#4169E1',
-            'Shadow': '#800080'
-        };
-        return colors[element] || '#FF6B35';
-    }
-
-    static getPetAvatar(element) {
-        const avatars = {
-            'Fire': 'https://i.imgur.com/fire-pet.png',
-            'Ice': 'https://i.imgur.com/ice-pet.png',
-            'Nature': 'https://i.imgur.com/nature-pet.png',
-            'Storm': 'https://i.imgur.com/storm-pet.png',
-            'Shadow': 'https://i.imgur.com/shadow-pet.png'
-        };
-        return avatars[element] || 'https://i.imgur.com/default-pet.png';
-    }
-
-    static createButtonRow(buttons) {
-        const row = new ActionRowBuilder();
-        
-        buttons.forEach(button => {
-            const buttonBuilder = new ButtonBuilder()
-                .setCustomId(button.customId)
-                .setLabel(button.label)
-                .setStyle(button.style || ButtonStyle.Primary);
-
-            if (button.emoji) {
-                buttonBuilder.setEmoji(button.emoji);
-            }
-
-            if (button.url) {
-                buttonBuilder.setURL(button.url);
-            }
-
-            row.addComponents(buttonBuilder);
-        });
-
-        return row;
-    }
-
-    static getVerificationButtons() {
-        return this.createButtonRow([
-            {
-                customId: 'verify_wallet',
-                label: 'Connect Wallet',
-                style: ButtonStyle.Primary,
-                emoji: '💼'
-            },
-            {
-                customId: 'verify_check_status',
-                label: 'Check Status',
-                style: ButtonStyle.Secondary,
-                emoji: 'ℹ️'
-            },
-            {
-                customId: 'verify_help',
-                label: 'Help',
-                style: ButtonStyle.Secondary,
-                emoji: '❓'
-            }
-        ]);
-    }
-
-    static getPetButtons() {
-        return this.createButtonRow([
-            {
-                customId: 'pet_feed',
-                label: 'Feed',
-                style: ButtonStyle.Primary,
-                emoji: '🍖'
-            },
-            {
-                customId: 'pet_train',
-                label: 'Train',
-                style: ButtonStyle.Secondary,
-                emoji: '🎯'
-            },
-            {
-                customId: 'pet_play',
-                label: 'Play',
-                style: ButtonStyle.Success,
-                emoji: '🎮'
-            }
-        ]);
-    }
-
-    static getBattleButtons() {
-        return this.createButtonRow([
-            {
-                customId: 'battle_attack',
-                label: 'Attack',
-                style: ButtonStyle.Danger,
-                emoji: '⚔️'
-            },
-            {
-                customId: 'battle_defend',
-                label: 'Defend',
-                style: ButtonStyle.Secondary,
-                emoji: '🛡️'
-            },
-            {
-                customId: 'battle_special',
-                label: 'Special',
-                style: ButtonStyle.Primary,
-                emoji: '✨'
-            }
-        ]);
-    }
-
-    static getTicketButtons() {
-        return this.createButtonRow([
-            {
-                customId: 'ticket_create',
-                label: 'Create Ticket',
-                style: ButtonStyle.Primary,
-                emoji: '🎫'
-            },
-            {
-                customId: 'ticket_view',
-                label: 'My Tickets',
-                style: ButtonStyle.Secondary,
-                emoji: '📋'
-            }
-        ]);
-    }
-
-    // New method for creating welcome embeds with AI-generated content
+    
+    /**
+     * Creates a specific embed for welcome messages.
+     * @param {import('discord.js').GuildMember} member - The member who joined.
+     * @param {string|null} welcomeMessage - An optional custom welcome message.
+     * @returns {DiscordEmbedBuilder}
+     */
     static createWelcomeEmbed(member, welcomeMessage = null) {
-        const embed = this.createMatricaStyleEmbed({
+        return this.createMatricaStyleEmbed({
             title: '🎉 Welcome to Lil Gargs!',
             description: welcomeMessage || `Welcome **${member.user.username}** to the Lil Gargs community! 🐲`,
             color: '#00FF00',
-            thumbnail: member.user.displayAvatarURL({ dynamic: true })
+            thumbnail: member.user.displayAvatarURL({ dynamic: true }),
+            fields: [
+                {
+                    name: '🚀 Getting Started',
+                    value: [
+                        '🐲 **/pet adopt**: Get your first Lil Garg pet!',
+                        '⚔️ **/battle start**: Challenge other members.',
+                        '🔐 **/verify-nft**: Verify your holder status for exclusive channels.'
+                    ].join('\n'),
+                    inline: false
+                }
+            ]
         });
-
-        embed.addFields(
-            {
-                name: '🚀 Getting Started',
-                value: [
-                    '🐲 **Adopt a Pet** - Use `/pet adopt [name]` to get your first Lil Garg',
-                    '⚔️ **Battle System** - Challenge other members with `/battle start @user`',
-                    '🔐 **NFT Verification** - Verify your holdings to access exclusive channels',
-                    '🎫 **Support Tickets** - Need help? Create a ticket in the support channel'
-                ].join('\n'),
-                inline: false
-            },
-            {
-                name: '💎 NFT Mining',
-                value: 'Connect your wallet to verify your Lil Gargs NFT holdings and unlock special roles and channels!',
-                inline: false
-            }
-        );
-
-        return embed;
     }
 
-    // New method for creating lockdown embeds
+    /**
+     * Creates a specific embed for server lockdowns.
+     * @param {string} reason - The reason for the lockdown.
+     * @returns {DiscordEmbedBuilder}
+     */
     static createLockdownEmbed(reason = 'Emergency lockdown initiated') {
-        const embed = this.createMatricaStyleEmbed({
+        return this.createMatricaStyleEmbed({
             title: '🚨 SERVER LOCKDOWN',
             description: 'This server is currently under emergency lockdown.',
             color: '#FF0000',
-            thumbnail: 'https://i.imgur.com/lockdown-icon.png'
+            fields: [
+                { name: '⚠️ Status', value: 'All chat channels are restricted to staff only.', inline: false },
+                { name: '🔒 Reason', value: reason, inline: false },
+                { name: '📢 Instructions', value: 'Please wait for staff to resolve the situation.', inline: false }
+            ]
         });
+    }
 
-        embed.addFields(
-            {
-                name: '⚠️ Status',
-                value: 'All chat channels are restricted to founders only.',
-                inline: false
-            },
-            {
-                name: '🔒 Reason',
-                value: reason,
-                inline: false
-            },
-            {
-                name: '📢 Instructions',
-                value: 'Please wait for staff to resolve the situation. Only founders can post during lockdown.',
-                inline: false
+    /**
+     * Creates a row of buttons.
+     * @param {Array<object>} buttons - An array of button configurations.
+     * @returns {ActionRowBuilder<ButtonBuilder>}
+     */
+    static createButtonRow(buttons) {
+        const row = new ActionRowBuilder();
+        buttons.forEach(buttonConfig => {
+            const button = new ButtonBuilder()
+                .setCustomId(buttonConfig.customId)
+                .setLabel(buttonConfig.label)
+                .setStyle(buttonConfig.style || ButtonStyle.Primary);
+
+            if (buttonConfig.emoji) {
+                button.setEmoji(buttonConfig.emoji);
             }
-        );
-
-        return embed;
+            if (buttonConfig.url) {
+                button.setURL(buttonConfig.url);
+            }
+            if (buttonConfig.disabled) {
+                button.setDisabled(buttonConfig.disabled);
+            }
+            row.addComponents(button);
+        });
+        return row;
     }
 }
 

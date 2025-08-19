@@ -5,7 +5,19 @@ const userSchema = new mongoose.Schema({
     discordId: {
         type: String,
         required: true,
-        unique: true,
+        // Removed unique: true here as discordId is not unique across ALL guilds
+        index: true // Kept for general user lookups
+    },
+    guildId: {
+        type: String,
+        required: true,
+        index: true
+    },
+    // userGuildId will be a compound key for uniqueness of a user within a guild
+    userGuildId: {
+        type: String,
+        required: true,
+        unique: true, // This ensures uniqueness for a user within a specific guild
         index: true
     },
     username: {
@@ -27,6 +39,11 @@ const userSchema = new mongoose.Schema({
         type: Boolean,
         default: false,
         index: true
+    },
+    isWhitelisted: { // Added for link whitelist system
+        type: Boolean,
+        default: false,
+        // Removed duplicate index: true from here, it's defined below in userSchema.index
     },
     nftTokens: [{
         mint: String,
@@ -77,10 +94,14 @@ const userSchema = new mongoose.Schema({
     timestamps: true
 });
 
-// Indexes for better query performance
-userSchema.index({ discordId: 1, isVerified: 1 });
+// Compound index for discordId and guildId if userGuildId is not used as primary unique key
+// userSchema.index({ discordId: 1, guildId: 1 }, { unique: true });
+
+// Indexes for better query performance (already had discordId and walletAddress)
+// userSchema.index({ discordId: 1 }); // Kept for general user lookups
 userSchema.index({ walletAddress: 1, isVerified: 1 });
 userSchema.index({ lastVerificationCheck: 1 });
+userSchema.index({ isWhitelisted: 1 }); // This is now the single definition for this index
 
 // Instance methods
 userSchema.methods.addNFT = function(nftData) {

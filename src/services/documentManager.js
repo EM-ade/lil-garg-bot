@@ -5,6 +5,8 @@ const { Document } = require("../database/models");
 const logger = require("../utils/logger");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const config = require("../config/environment");
+const pdf = require("pdf-parse");
+const mammoth = require("mammoth");
 
 class DocumentManager {
   constructor() {
@@ -40,17 +42,28 @@ class DocumentManager {
   }
 
   /**
-   * Check if content is likely binary
+   * Extract text content from various file types
    */
-  isBinary(content) {
-    // A simple check for null bytes is a good indicator
-    return content.includes('\u0000');
+  async extractTextFromFile(buffer, filename) {
+    const ext = path.extname(filename).toLowerCase();
+
+    if (ext === ".pdf") {
+      const data = await pdf(buffer);
+      return data.text;
+    } else if (ext === ".docx") {
+      const { value } = await mammoth.extractRawText({ buffer });
+      return value;
+    } else if (ext === ".txt" || ext === ".md" || ext === ".json") {
+      return buffer.toString("utf8");
+    } else {
+      throw new Error(`Unsupported file type: ${ext}`);
+    }
   }
 
   /**
    * Validate file before processing
    */
-  validateFile(filename, content) {
+  validateFile(filename, buffer) {
     const ext = path.extname(filename).toLowerCase();
 
     if (!this.allowedExtensions.includes(ext)) {
@@ -61,18 +74,14 @@ class DocumentManager {
       );
     }
 
-    if (content.length > this.maxFileSize) {
+    if (buffer.length > this.maxFileSize) {
       throw new Error(
         `File size exceeds maximum limit of ${this.maxFileSize / 1024 / 1024}MB`
       );
     }
 
-    if (content.length === 0) {
+    if (buffer.length === 0) {
       throw new Error("File is empty");
-    }
-
-    if (this.isBinary(content)) {
-      throw new Error("Binary files are not supported.");
     }
   }
 
@@ -116,13 +125,20 @@ class DocumentManager {
   /**
    * Add a new document to the knowledge base
    */
-  async addDocument(filename, content, metadata = {}) {
+  async addDocument(filename, fileBuffer, metadata = {}) {
     try {
       // Validate the file
-      this.validateFile(filename, content);
+      this.validateFile(filename, fileBuffer);
+
+      // Extract text content from the file buffer
+      const content = await this.extractTextFromFile(fileBuffer, filename);
+
+      if (!content || content.trim().length === 0) {
+        throw new Error("Extracted text content is empty.");
+      }
 
       // Calculate file hash
-      const fileHash = this.calculateFileHash(content);
+      const fileHash = this.calculateFileHash(fileBuffer);
 
       // Check if document already exists
       const existingDoc = await Document.findOne({ fileHash });
@@ -140,12 +156,12 @@ class DocumentManager {
       const document = new Document({
         title: metadata.title || path.parse(filename).name,
         filename,
-        content,
+        content, // The extracted text content
         contentType: this.getContentType(filename),
         description: metadata.description || "",
         tags: metadata.tags || [],
         category: metadata.category || "general",
-        fileSize: content.length,
+        fileSize: fileBuffer.length, // The original file size
         fileHash,
         uploadedBy: metadata.uploadedBy,
         processingStatus: "pending",
@@ -153,9 +169,9 @@ class DocumentManager {
 
       await document.save();
 
-      // Save file to disk
+      // Save the original file to disk
       const filePath = path.join(this.documentsDir, filename);
-      await fs.writeFile(filePath, content, "utf8");
+      await fs.writeFile(filePath, fileBuffer);
 
       // Process document for embeddings (async)
       this.processDocumentForEmbeddings(document._id).catch((error) => {

@@ -1,8 +1,20 @@
 const { Events } = require('discord.js');
 const { logger } = require('../utils/logger');
 const { getGuildConfig } = require('../utils/dbUtils');
-const { checkMessageRestrictions, isSimilarUsername } = require('../utils/securityManager');
 const { createErrorEmbed, createWarningEmbed } = require('../utils/embedBuilder');
+const SecurityManager = require('../utils/securityManager'); // Import SecurityManager
+
+let securityManagerInstance = null; // To hold the singleton instance
+
+/**
+ * Helper to get or create SecurityManager instance
+ */
+function getSecurityManager(client) {
+  if (!securityManagerInstance) {
+    securityManagerInstance = new SecurityManager(client);
+  }
+  return securityManagerInstance;
+}
 
 /**
  * Security monitoring for messages
@@ -13,25 +25,54 @@ const messageSecurityHandler = {
     // Ignore bot messages and DMs
     if (message.author.bot || !message.guild) return;
 
+    const securityManager = getSecurityManager(client);
+
     try {
       const config = await getGuildConfig(message.guild.id);
       if (!config?.security) return;
 
-      // Check for spam
+      const linkFilterEnabled = config.security.linkFilter?.enabled;
+      const linkFilterAction = config.security.linkFilter?.action || 'delete';
+
+      const inviteRegex = /(https?://)?(www\\.)?(discord\\.(gg|io|me|li)|discordapp\\.com/invite)/gi;
+      const urlRegex = /https?:\\/\\/[^\\s]+/g; // General URL regex
+      
+      // 1. Check for spam
       if (config.security.antiSpam?.enabled) {
         await handleAntiSpam(message, config.security.antiSpam);
       }
 
-      // Check for suspicious links
-      if (config.security.linkFilter?.enabled) {
-        await handleLinkFilter(message, config.security.linkFilter);
+      // 2. Check for unauthorized links
+      if (linkFilterEnabled && urlRegex.test(message.content)) {
+        const isWhitelisted = await securityManager.isAuthorizedToPostLinks(message.member);
+        if (!isWhitelisted) {
+          await handleUnauthorizedLink(message, linkFilterAction, securityManager);
+          return; // Stop further processing if link is restricted
+        }
       }
 
-      // Check message restrictions
-      const restriction = checkMessageRestrictions(message, config);
-      if (restriction.restricted) {
-        await handleRestrictedMessage(message, restriction);
+      // 3. Check for invite links (always restricted unless whitelisted for all links via the above check)
+      if (inviteRegex.test(message.content)) {
+        const isWhitelisted = await securityManager.isAuthorizedToPostLinks(message.member);
+        if (!isWhitelisted) {
+          await handleInviteLink(message, securityManager);
+          return; // Stop further processing if invite link is restricted
+        }
       }
+
+      // 4. Check for mass mentions (always restricted)
+      if (message.mentions.users.size > 5 || message.mentions.roles.size > 3) {
+          await handleMassMention(message, securityManager);
+          return; // Stop further processing if mass mention is restricted
+      }
+
+      // 5. Check for scam URLs (always restricted)
+      if (securityManager.isScamURL(message.content)) {
+          await handleScamURL(message, securityManager);
+          return; // Stop further processing if scam URL is restricted
+      }
+
+      // Removed checkMessageRestrictions as its logic is now inline or moved to specific handlers
 
     } catch (error) {
       logger.error('Error in security message monitoring:', error);
@@ -45,18 +86,20 @@ const messageSecurityHandler = {
 const memberJoinSecurityHandler = {
   name: Events.GuildMemberAdd,
   async execute(member, client) {
+    const securityManager = getSecurityManager(client);
+
     try {
       const config = await getGuildConfig(member.guild.id);
       if (!config?.security) return;
 
       // Check for raid protection
       if (config.security.antiRaid?.enabled) {
-        await handleAntiRaid(member, config.security.antiRaid);
+        await handleAntiRaid(member, config.security.antiRaid, securityManager);
       }
 
       // Check for username impersonation
       if (config.security.impersonationProtection?.enabled) {
-        await handleImpersonationCheck(member, config.security.impersonationProtection);
+        await handleImpersonationCheck(member, config.security.impersonationProtection, securityManager);
       }
 
     } catch (error) {
@@ -154,113 +197,113 @@ async function handleAntiSpam(message, config) {
 }
 
 /**
- * Handle link filtering
+ * Handle unauthorized links
  */
-async function handleLinkFilter(message, config) {
-  const suspiciousPatterns = [
-    /discord\.gg\/[a-zA-Z0-9]+/gi,
-    /discordapp\.com\/invite\/[a-zA-Z0-9]+/gi,
-    /discord\.com\/invite\/[a-zA-Z0-9]+/gi,
-    /bit\.ly\/[a-zA-Z0-9]+/gi,
-    /tinyurl\.com\/[a-zA-Z0-9]+/gi,
-    /grabify\.link/gi,
-    /iplogger\.org/gi
-  ];
-  
-  const content = message.content.toLowerCase();
-  const hasSuspiciousLink = suspiciousPatterns.some(pattern => pattern.test(content));
-  
-  if (hasSuspiciousLink) {
-    try {
-      await message.delete();
-      
-      const action = config.action || 'delete';
-      
-      if (action === 'warn' || action === 'timeout') {
-        const embed = createWarningEmbed(
-          '🔗 Suspicious Link Detected',
-          `${message.author}, your message contained a suspicious link and was removed.`,
-          [
-            {
-              name: '⚠️ Warning',
-              value: 'Please avoid posting suspicious or unauthorized links.',
-              inline: false
-            }
-          ]
-        );
-        
-        const warningMsg = await message.channel.send({ embeds: [embed] });
-        
-        // Delete warning after 10 seconds
-        setTimeout(async () => {
-          try {
-            await warningMsg.delete();
-          } catch (error) {
-            // Ignore deletion errors
-          }
-        }, 10000);
-      }
-      
-      if (action === 'timeout') {
-        try {
-          await message.member.timeout(2 * 60 * 1000, 'Posted suspicious link'); // 2 minutes
-        } catch (error) {
-          logger.error('Failed to timeout user for suspicious link:', error);
-        }
-      }
-      
-      logger.warn(`Suspicious link removed from ${message.author.tag} in ${message.guild.name}`);
-      
-    } catch (error) {
-      logger.error('Failed to handle suspicious link:', error);
+async function handleUnauthorizedLink(message, action, securityManager) {
+  try {
+    await message.delete();
+    let warningMessageContent = `${message.author}, your message was removed because you are not authorized to post links here.`;
+    
+    if (action === 'warn') {
+      const warning = await message.channel.send({
+          content: warningMessageContent,
+          ephemeral: true
+      });
+      setTimeout(() => { warning.delete().catch(() => {}); }, 10000); // Auto-delete warning
+    } else if (action === 'timeout') {
+      await message.member.timeout(10 * 60 * 1000, 'Posting unauthorized links'); // 10 minutes timeout
+      warningMessageContent += ' You have been timed out for 10 minutes.';
+        const warning = await message.channel.send({
+          content: warningMessageContent,
+          ephemeral: true
+      });
+      setTimeout(() => { warning.delete().catch(() => {}); }, 10000); // Auto-delete warning
     }
+
+    await securityManager.logSecurityAction(message.guild, 'Unauthorized Link Posted', {
+        user: message.author.tag,
+        userId: message.author.id,
+        channel: message.channel.name,
+        action: `Message deleted, user ${action === 'delete' ? 'warned' : 'timed out'}`
+    });
+  } catch (error) {
+      logger.error('Failed to handle unauthorized link:', error);
   }
 }
 
 /**
- * Handle restricted message
+ * Handle mass mention
  */
-async function handleRestrictedMessage(message, restriction) {
+async function handleMassMention(message, securityManager) {
   try {
-    await message.delete();
-    
-    const embed = createErrorEmbed(
-      '🚫 Message Restricted',
-      restriction.description,
-      [
-        {
-          name: '📝 Reason',
-          value: restriction.reason,
-          inline: true
-        }
-      ]
-    );
-    
-    const warningMsg = await message.channel.send({ 
-      content: `${message.author}`,
-      embeds: [embed] 
-    });
-    
-    // Delete warning after 10 seconds
-    setTimeout(async () => {
-      try {
-        await warningMsg.delete();
-      } catch (error) {
-        // Ignore deletion errors
-      }
-    }, 10000);
-    
-    logger.warn(`Restricted message from ${message.author.tag}: ${restriction.reason}`);
-    
+      // Delete the message
+      await message.delete();
+      
+      // Timeout the user for 10 minutes
+      await message.member.timeout(10 * 60 * 1000, 'Mass mention detected');
+      
+      // Log the action
+      await securityManager.logSecurityAction(message.guild, 'Mass Mention Detected', {
+          user: message.author.tag,
+          userId: message.author.id,
+          channel: message.channel.name,
+          action: 'Message deleted, user timed out for 10 minutes'
+      });
   } catch (error) {
-    logger.error('Failed to handle restricted message:', error);
+      logger.error('Failed to handle mass mention:', error);
+  }
+}
+
+/**
+ * Handle invite link
+ */
+async function handleInviteLink(message, securityManager) {
+  try {
+      // Delete the message
+      await message.delete();
+      
+      // Kick the user
+      await message.member.kick('Posting Discord invite links');
+      
+      // Log the action
+      await securityManager.logSecurityAction(message.guild, 'Discord Invite Link Posted', {
+          user: message.author.tag,
+          userId: message.author.id,
+          channel: message.channel.name,
+          action: 'User kicked'
+      });
+  } catch (error) {
+      logger.error('Failed to handle invite link:', error);
+  }
+}
+
+/**
+ * Handle scam URL
+ */
+async function handleScamURL(message, securityManager) {
+  try {
+      // Delete the message
+      await message.delete();
+      
+      // Ban the user
+      await message.member.ban({ reason: 'Scam URL detected' });
+      
+      // Log the action
+      await securityManager.logSecurityAction(message.guild, 'Scam URL Detected', {
+          user: message.author.tag,
+          userId: message.author.id,
+          channel: message.channel.name,
+          action: 'User banned'
+      });
+  } catch (error) {
+      logger.error('Failed to handle scam URL:', error);
   }
 }
 
 /**
  * Handle anti-raid protection
  */
-async function handleAntiRaid(member, config) {
+async function handleAntiRaid(member, config, securityManager) {
   const guildId = member.guild.id;
   const now = Date.now();
   const threshold = config.joinThreshold || 10;
@@ -290,8 +333,8 @@ async function handleAntiRaid(member, config) {
           await member.ban({ reason: 'Anti-raid protection triggered' });
           break;
         case 'lockdown':
-          const { enableLockdown } = require('../utils/securityManager');
-          await enableLockdown(guildId, member.client.user.id, 'Raid detected - automatic lockdown');
+          // Use the lockdown function from the securityManager instance
+          await securityManager.lockdown(member.guild, 'Raid detected - automatic lockdown');
           break;
       }
       
@@ -332,7 +375,7 @@ async function handleAntiRaid(member, config) {
 /**
  * Handle username impersonation check
  */
-async function handleImpersonationCheck(member, config) {
+async function handleImpersonationCheck(member, config, securityManager) {
   const threshold = (config.similarityThreshold || 80) / 100; // Convert to 0-1 scale
   const newUsername = member.user.username;
   
@@ -344,7 +387,7 @@ async function handleImpersonationCheck(member, config) {
     
     const existingUsername = existingMember.displayName || existingMember.user.username;
     
-    if (isSimilarUsername(newUsername, existingUsername, threshold)) {
+    if (securityManager.calculateSimilarity(newUsername, existingUsername) > threshold) {
       try {
         // Send alert to log channel
         const logChannel = member.guild.channels.cache.find(ch => 

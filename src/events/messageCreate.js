@@ -1,6 +1,5 @@
 const { Events } = require('discord.js');
 const { logger } = require('../utils/logger');
-const { checkMessageRestrictions } = require('../utils/securityManager');
 const { cleanupSpam } = require('../utils/cleanupManager');
 const { getGuildConfig } = require('../utils/dbUtils');
 
@@ -18,74 +17,22 @@ module.exports = {
         return;
       }
       
-      // Get guild configuration
+      // Get guild configuration (if needed for other non-security specific features)
       const config = await getGuildConfig(message.guild.id);
       
-      // Check for security restrictions
-      const securityCheck = checkMessageRestrictions(message, config);
-      
-      if (securityCheck.restricted) {
-        try {
-          // Delete the message
-          await message.delete();
-          
-          // Notify the user
-          const warningMessage = await message.channel.send({
-            content: `<@${message.author.id}>, your message was removed: ${securityCheck.description}`,
-            ephemeral: true
-          });
-          
-          // Delete the warning after 5 seconds
-          setTimeout(() => {
-            warningMessage.delete().catch(err => {
-              logger.error('Error deleting warning message:', err);
-            });
-          }, 5000);
-          
-          // Log the incident
-          logger.info(`Removed restricted message from ${message.author.tag} in ${message.guild.name}: ${securityCheck.reason}`);
-          
-          return;
-        } catch (error) {
-          logger.error('Error handling restricted message:', error);
-        }
-      }
-      
-      // Check for spam
+      // Spam checking is already handled by securityMonitor.js, but if cleanupSpam
+      // has additional non-moderation related cleanup, keep it.
+      // Otherwise, this might be redundant.
       const isSpam = await cleanupSpam(message);
       if (isSpam) {
         return;
       }
-      
-      // Check for username impersonation on new messages
-      if (message.member && message.member.joinedTimestamp > Date.now() - 86400000) { // Joined within the last 24 hours
-        const { isSimilarUsername } = require('../utils/securityManager');
-        
-        if (isSimilarUsername(message.author.username)) {
-          try {
-            // Kick the user
-            await message.member.kick('Username impersonation detected');
-            
-            // Log the incident
-            logger.warn(`Kicked user ${message.author.tag} for username impersonation`);
-            
-            // Notify admins
-            const logChannel = message.guild.channels.cache.get(config.logChannelId);
-            if (logChannel) {
-              await logChannel.send({
-                content: `⚠️ Kicked user ${message.author.tag} (${message.author.id}) for username impersonation.`
-              });
-            }
-          } catch (error) {
-            logger.error('Error kicking user for username impersonation:', error);
-          }
-          
-          return;
-        }
-      }
-      
+
+      // Removed the direct call to securityManager.handleMessageContent
+      // as securityMonitor.js is responsible for link filtering and other checks.
+
       // Process AI chat mentions if enabled
-      if (config.featuresEnabled.aiChat && message.mentions.has(client.user)) {
+      if (config?.featuresEnabled?.aiChat && message.mentions.has(client.user)) {
         try {
           // Check if AI chat is enabled in this channel
           const channelFeatures = config.channelFeatures.get(message.channel.id);

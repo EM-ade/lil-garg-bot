@@ -172,6 +172,7 @@ const botConfigSchema = new mongoose.Schema(
           type: Boolean,
           default: false,
         },
+        linkWhitelist: [{ type: String }] // Array of user IDs
       },
     },
 

@@ -1,5 +1,6 @@
 const { EmbedBuilder, AuditLogEvent } = require('discord.js');
 const logger = require('./logger');
+const { User } = require('../database/models'); // Import the User model
 
 class SecurityManager {
     constructor(client) {
@@ -14,7 +15,7 @@ class SecurityManager {
     }
 
     setupEventHandlers() {
-        // Monitor member joins for username impersonation
+        // Monitor member joins for username impersonation (handled here as it's a direct member event)
         this.client.on('guildMemberAdd', async (member) => {
             await this.checkUsernameImpersonation(member);
         });
@@ -38,11 +39,7 @@ class SecurityManager {
             await this.checkMemberRemoval(member);
         });
 
-        // Monitor message content for links and spam
-        this.client.on('messageCreate', async (message) => {
-            if (message.author.bot) return;
-            await this.checkMessageContent(message);
-        });
+        // Removed messageCreate listener from here, it's handled by securityMonitor.js
     }
 
     async checkUsernameImpersonation(member) {
@@ -179,111 +176,22 @@ class SecurityManager {
         }
     }
 
-    async checkMessageContent(message) {
-        // Check for unauthorized links
-        if (!this.isAuthorizedToPostLinks(message.member)) {
-            const linkRegex = /https?:\/\/[^\s]+/g;
-            if (linkRegex.test(message.content)) {
-                await this.handleUnauthorizedLink(message);
-                return;
-            }
+    async isAuthorizedToPostLinks(member) {
+        // Check if the user is explicitly whitelisted in the database
+        const userConfig = await User.findOne({ userId: member.id, guildId: member.guild.id });
+        if (userConfig && userConfig.isWhitelisted) {
+            return true;
         }
-
-        // Check for mass mentions
-        if (message.mentions.users.size > 5 || message.mentions.roles.size > 3) {
-            await this.handleMassMention(message);
-            return;
-        }
-
-        // Check for invite links
-        const inviteRegex = /discord\.gg\/[a-zA-Z0-9]+/g;
-        if (inviteRegex.test(message.content)) {
-            await this.handleInviteLink(message);
-            return;
-        }
-
-        // Check for scam URLs
-        if (this.isScamURL(message.content)) {
-            await this.handleScamURL(message);
-            return;
-        }
-    }
-
-    isAuthorizedToPostLinks(member) {
-        // Only founders can post links
-        return member.roles.cache.some(role => 
-            this.founderRoleIds.has(role.id) || 
-            role.permissions.has('Administrator')
+    
+        // Additionally, allow users with Administrator permission or founder roles
+        return member.permissions.has('Administrator') || member.roles.cache.some(role =>
+            this.founderRoleIds.has(role.id) ||
+            role.name.toLowerCase().includes('founder') || // Check for founder role by name as well
+            role.name.toLowerCase().includes('owner')
         );
     }
 
-    async handleUnauthorizedLink(message) {
-        try {
-            // Delete the message
-            await message.delete();
-            
-            // Warn the user
-            const warning = await message.channel.send({
-                content: `${message.author}, you are not authorized to post links in this channel.`,
-                ephemeral: true
-            });
-
-            // Log the action
-            await this.logSecurityAction(message.guild, 'Unauthorized Link Posted', {
-                user: message.author.tag,
-                userId: message.author.id,
-                channel: message.channel.name,
-                action: 'Message deleted, user warned'
-            });
-
-            // Auto-delete warning after 10 seconds
-            setTimeout(() => {
-                warning.delete().catch(() => {});
-            }, 10000);
-        } catch (error) {
-            logger.error('Failed to handle unauthorized link:', error);
-        }
-    }
-
-    async handleMassMention(message) {
-        try {
-            // Delete the message
-            await message.delete();
-            
-            // Timeout the user for 10 minutes
-            await message.member.timeout(10 * 60 * 1000, 'Mass mention detected');
-            
-            // Log the action
-            await this.logSecurityAction(message.guild, 'Mass Mention Detected', {
-                user: message.author.tag,
-                userId: message.author.id,
-                channel: message.channel.name,
-                action: 'Message deleted, user timed out for 10 minutes'
-            });
-        } catch (error) {
-            logger.error('Failed to handle mass mention:', error);
-        }
-    }
-
-    async handleInviteLink(message) {
-        try {
-            // Delete the message
-            await message.delete();
-            
-            // Kick the user
-            await message.member.kick('Posting Discord invite links');
-            
-            // Log the action
-            await this.logSecurityAction(message.guild, 'Discord Invite Link Posted', {
-                user: message.author.tag,
-                userId: message.author.id,
-                channel: message.channel.name,
-                action: 'User kicked'
-            });
-        } catch (error) {
-            logger.error('Failed to handle invite link:', error);
-        }
-    }
+    // Removed handleMessageContent as it's now handled by securityMonitor.js
 
     isScamURL(content) {
         const scamPatterns = [
@@ -295,26 +203,6 @@ class SecurityManager {
         ];
         
         return scamPatterns.some(pattern => pattern.test(content));
-    }
-
-    async handleScamURL(message) {
-        try {
-            // Delete the message
-            await message.delete();
-            
-            // Ban the user
-            await message.member.ban({ reason: 'Scam URL detected' });
-            
-            // Log the action
-            await this.logSecurityAction(message.guild, 'Scam URL Detected', {
-                user: message.author.tag,
-                userId: message.author.id,
-                channel: message.channel.name,
-                action: 'User banned'
-            });
-        } catch (error) {
-            logger.error('Failed to handle scam URL:', error);
-        }
     }
 
     async logBan(ban) {

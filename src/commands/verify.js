@@ -7,7 +7,7 @@ const logger = require('../utils/logger');
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('verify')
+        .setName('verify-nft') // Changed command name to verify-nft
         .setDescription('Verify your Lil Gargs NFT ownership')
         .addStringOption(option =>
             option.setName('wallet')
@@ -34,12 +34,34 @@ module.exports = {
                 });
             }
 
-            // Check if user is already verified with this wallet
-            const existingUser = await User.findOne({ discordId: userId });
-            if (existingUser && existingUser.isVerified && existingUser.walletAddress === walletAddress) {
+            // Check if this wallet is already linked to another Discord user
+            const existingWalletUser = await User.findOne({ 
+                walletAddress: walletAddress, 
+                isVerified: true, // Only consider verified links
+                discordId: { $ne: userId } // Exclude the current user
+            });
+
+            if (existingWalletUser) {
                 return await interaction.editReply({
-                    content: '✅ You are already verified with this wallet address!',
+                    content: '❌ This wallet address is already linked to another verified Discord account.',
                 });
+            }
+
+            // Check if user is already verified with this wallet (or any wallet)
+            const existingUser = await User.findOne({ discordId: userId });
+            if (existingUser && existingUser.isVerified) {
+                if (existingUser.walletAddress === walletAddress) {
+                    return await interaction.editReply({
+                        content: '✅ You are already verified with this wallet address!',
+                    });
+                } else {
+                    // If user is verified with a *different* wallet, allow them to re-verify
+                    // This will update their wallet address in the database
+                    await interaction.followUp({
+                        content: '⚠️ You are already verified with a different wallet. Attempting to update your verification.',
+                        ephemeral: true
+                    });
+                }
             }
 
             // Verify NFT ownership

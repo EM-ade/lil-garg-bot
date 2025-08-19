@@ -103,13 +103,13 @@ module.exports = {
         });
       }
 
-      // Download the file content
-      let fileContent;
+      // Download the file content as a buffer
+      let fileBuffer;
       try {
         const response = await axios.get(attachment.url, {
-          responseType: "text",
+          responseType: "arraybuffer", // Download as a buffer
         });
-        fileContent = response.data;
+        fileBuffer = response.data;
       } catch (error) {
         logger.error("Error downloading file:", error);
         return await interaction.editReply({
@@ -118,7 +118,7 @@ module.exports = {
       }
 
       // Validate content
-      if (!fileContent || fileContent.trim().length === 0) {
+      if (!fileBuffer || fileBuffer.length === 0) {
         return await interaction.editReply({
           content: "❌ The file appears to be empty or could not be read.",
         });
@@ -153,7 +153,7 @@ module.exports = {
 
       const document = await documentManager.addDocument(
         attachment.name,
-        fileContent,
+        fileBuffer, // Pass the buffer
         metadata
       );
 
@@ -220,6 +220,8 @@ module.exports = {
       } else if (error.message.includes("File type")) {
         errorMessage = `❌ ${error.message}`;
       } else if (error.message.includes("File size")) {
+        errorMessage = `❌ ${error.message}`;
+      } else if (error.message.includes("empty")) {
         errorMessage = `❌ ${error.message}`;
       }
 
