@@ -1,6 +1,7 @@
 const NFTVerificationService = require('./nftVerification');
 const { User, BotConfig } = require('../database/models');
 const logger = require('../utils/logger');
+const { assignRolesBasedOnNfts } = require('./nftRoleManagerService'); // Import the role assignment function
 
 class NFTMonitoringService {
   constructor() {
@@ -52,9 +53,10 @@ class NFTMonitoringService {
       logger.info('Starting comprehensive NFT check...');
       
       // Get all guilds with NFT verification enabled
+      // This assumes nftVerification.enabled and autoRoleAssignment are fields in BotConfig
       const guildConfigs = await BotConfig.find({
         'nftVerification.enabled': true,
-        'nftVerification.autoRoleAssignment': true
+        'nftVerification.autoRoleAssignment': true // Assuming this field exists and is true for auto checks
       });
 
       let totalUsersChecked = 0;
@@ -87,24 +89,43 @@ class NFTMonitoringService {
     try {
       // Get all verified users in this guild
       const verifiedUsers = await User.find({
+        guildId: guildId,
         isVerified: true,
         walletAddress: { $exists: true, $ne: null }
       });
 
       logger.info(`Checking ${verifiedUsers.length} verified users in guild ${guildId}`);
 
-      for (const user of verifiedUsers) {
+      const guild = this.client.guilds.cache.get(guildId);
+      if (!guild) {
+          logger.warn(`Guild ${guildId} not found in cache during NFT check. Skipping.`);
+          return { usersChecked: 0, usersUpdated: 0 };
+      }
+
+      for (const userProfile of verifiedUsers) {
         try {
-          const wasUpdated = await this.checkUserNFTs(user, guildConfig);
+          // Fetch the member object for role management
+          const member = await guild.members.fetch(userProfile.discordId).catch(err => {
+            logger.warn(`Could not fetch member ${userProfile.discordId} in guild ${guildId}: ${err.message}`);
+            return null;
+          });
+
+          if (!member) {
+              logger.warn(`Member ${userProfile.discordId} not found in guild ${guildId}. Skipping NFT check for this user.`);
+              continue; // Skip to next user if member not found
+          }
+
+          const wasUpdated = await this.checkUserNFTs(userProfile, member);
           if (wasUpdated) {
             usersUpdated++;
           }
           usersChecked++;
 
-          // Add delay to avoid rate limiting
-          await new Promise(resolve => setTimeout(resolve, 200));
+          // Add a small delay to prevent hitting Discord API rate limits
+          await new Promise(resolve => setTimeout(resolve, 500)); // 500ms delay
+
         } catch (error) {
-          logger.error(`Error checking user ${user.discordId}:`, error);
+          logger.error(`Error checking user ${userProfile.discordId} in guild ${guildId}:`, error);
         }
       }
 
@@ -117,233 +138,72 @@ class NFTMonitoringService {
 
   /**
    * Check NFTs for a specific user and update roles if needed
+   * Modified to receive the Discord member object directly.
    */
-  async checkUserNFTs(user, guildConfig) {
+  async checkUserNFTs(userProfile, member) {
     try {
-      // Get current NFT holdings
-      const currentNFTs = await this.nftService.getLilGargsNFTs(user.walletAddress);
-      const currentNFTCount = currentNFTs.length;
+      // Get current NFT holdings using the dedicated NFTVerificationService
+      // Note: If you have multiple collections, you'd iterate through them here
+      // For this mock, we assume a single 'lil_gargs_collection_id' for verification
+      const verificationResult = await this.nftService.verifyNFTOwnership(userProfile.walletAddress);
+      const currentNFTCount = verificationResult.nftCount;
+      const currentNFTs = verificationResult.nfts;
 
-      // Check if NFT count has changed
-      if (currentNFTCount !== user.nftTokens.length) {
-        logger.info(`User ${user.discordId} NFT count changed: ${user.nftTokens.length} -> ${currentNFTCount}`);
+      let changed = false;
 
-        // Update user's NFT tokens
-        user.nftTokens = currentNFTs.map(nft => ({
+      // Check if NFT count has changed or if verified status needs updating
+      if (currentNFTCount !== userProfile.nftTokens.length || userProfile.isVerified !== verificationResult.isVerified) {
+        logger.info(`User ${userProfile.discordId} NFT count/status changed: ${userProfile.nftTokens.length} -> ${currentNFTCount}, Verified: ${userProfile.isVerified} -> ${verificationResult.isVerified}`);
+
+        // Update user's NFT tokens and verification status
+        userProfile.nftTokens = currentNFTs.map(nft => ({
           mint: nft.mint,
           name: nft.name,
           image: nft.image,
           verifiedAt: new Date()
         }));
-
-        // Update verification status
-        user.isVerified = currentNFTCount > 0;
-        user.lastVerificationCheck = new Date();
+        userProfile.isVerified = verificationResult.isVerified;
+        userProfile.lastVerificationCheck = new Date();
 
         // Add to verification history
-        user.verificationHistory.push({
-          walletAddress: user.walletAddress,
+        userProfile.verificationHistory.push({
+          walletAddress: userProfile.walletAddress,
           verifiedAt: new Date(),
           nftCount: currentNFTCount,
-          status: user.isVerified ? 'success' : 'failed'
+          status: userProfile.isVerified ? 'success' : 'failed'
         });
 
-        await user.save();
-
-        // Update roles based on new NFT count
-        await this.updateUserRoles(user, guildConfig, currentNFTCount);
-
-        return true; // User was updated
+        await userProfile.save();
+        changed = true;
       }
 
-      return false; // No changes
+      // Always call assignRolesBasedOnNfts to ensure roles are correct based on current holdings
+      // This handles both adding and removing roles based on the BotConfig rules
+      await assignRolesBasedOnNfts(member, userProfile.walletAddress);
+
+      return changed; // Return true if user data in DB was updated
     } catch (error) {
-      logger.error(`Error checking NFTs for user ${user.discordId}:`, error);
+      logger.error(`Error checking NFTs for user ${userProfile.discordId}: ${error.message}`);
       
-      // If verification fails, mark user as unverified
-      if (user.isVerified) {
-        user.isVerified = false;
-        user.lastVerificationCheck = new Date();
-        user.verificationHistory.push({
-          walletAddress: user.walletAddress,
+      // If an error occurs during verification, mark user as unverified if they were previously verified
+      if (userProfile.isVerified) {
+        userProfile.isVerified = false;
+        userProfile.lastVerificationCheck = new Date();
+        userProfile.verificationHistory.push({
+          walletAddress: userProfile.walletAddress,
           verifiedAt: new Date(),
-          nftCount: 0,
-          status: 'failed'
+          nftCount: userProfile.nftTokens.length, // Log current count before setting to 0
+          status: 'failed' // Mark as failed due to error
         });
-        await user.save();
-        
-        // Remove roles
-        await this.removeUserRoles(user, guildConfig);
-        return true;
+        userProfile.nftTokens = []; // Clear NFTs on verification failure
+        await userProfile.save();
+
+        // Attempt to remove all managed NFT roles as verification failed
+        await assignRolesBasedOnNfts(member, userProfile.walletAddress); // This will remove roles if nftCount is effectively 0
+        return true; // User data was updated due to error
       }
       
-      return false;
-    }
-  }
-
-  /**
-   * Update user roles based on NFT count
-   */
-  async updateUserRoles(user, guildConfig, nftCount) {
-    try {
-      const guild = await this.getGuild(guildConfig.guildId);
-      if (!guild) {
-        logger.error(`Guild ${guildConfig.guildId} not found`);
-        return;
-      }
-
-      const member = await guild.members.fetch(user.discordId);
-      if (!member) {
-        logger.warn(`Member ${user.discordId} not found in guild ${guildConfig.guildId}`);
-        return;
-      }
-
-      // Remove old NFT-based roles
-      await this.removeUserRoles(user, guildConfig);
-
-      // Add new roles based on NFT count
-      if (nftCount > 0) {
-        const roleTiers = guildConfig.nftVerification.roleTiers || [];
-        
-        // Sort tiers by NFT count (highest first)
-        const sortedTiers = roleTiers.sort((a, b) => b.nftCount - a.nftCount);
-        
-        // Find the highest tier the user qualifies for
-        const qualifiedTier = sortedTiers.find(tier => nftCount >= tier.nftCount);
-        
-        if (qualifiedTier) {
-          try {
-            const role = await guild.roles.fetch(qualifiedTier.roleId);
-            if (role) {
-              await member.roles.add(role);
-              logger.info(`Added role ${qualifiedTier.roleName} to user ${user.discordId} (${nftCount} NFTs)`);
-            }
-          } catch (error) {
-            logger.error(`Error adding role ${qualifiedTier.roleName} to user ${user.discordId}:`, error);
-          }
-        }
-
-        // Add verified role if configured
-        if (guildConfig.verifiedRoleId) {
-          try {
-            const verifiedRole = await guild.roles.fetch(guildConfig.verifiedRoleId);
-            if (verifiedRole) {
-              await member.roles.add(verifiedRole);
-              logger.info(`Added verified role to user ${user.discordId}`);
-            }
-          } catch (error) {
-            logger.error(`Error adding verified role to user ${user.discordId}:`, error);
-          }
-        }
-      }
-
-      // Log role update
-      await this.logRoleUpdate(guildConfig, user, nftCount);
-    } catch (error) {
-      logger.error(`Error updating roles for user ${user.discordId}:`, error);
-    }
-  }
-
-  /**
-   * Remove NFT-based roles from user
-   */
-  async removeUserRoles(user, guildConfig) {
-    try {
-      const guild = await this.getGuild(guildConfig.guildId);
-      if (!guild) return;
-
-      const member = await guild.members.fetch(user.discordId);
-      if (!member) return;
-
-      // Remove NFT tier roles
-      const roleTiers = guildConfig.nftVerification.roleTiers || [];
-      for (const tier of roleTiers) {
-        try {
-          if (member.roles.cache.has(tier.roleId)) {
-            await member.roles.remove(tier.roleId);
-            logger.info(`Removed role ${tier.roleName} from user ${user.discordId}`);
-          }
-        } catch (error) {
-          logger.error(`Error removing role ${tier.roleName} from user ${user.discordId}:`, error);
-        }
-      }
-
-      // Remove verified role
-      if (guildConfig.verifiedRoleId && member.roles.cache.has(guildConfig.verifiedRoleId)) {
-        try {
-          await member.roles.remove(guildConfig.verifiedRoleId);
-          logger.info(`Removed verified role from user ${user.discordId}`);
-        } catch (error) {
-          logger.error(`Error removing verified role from user ${user.discordId}:`, error);
-        }
-      }
-    } catch (error) {
-      logger.error(`Error removing roles from user ${user.discordId}:`, error);
-    }
-  }
-
-  /**
-   * Get Discord guild object
-   */
-  async getGuild(guildId) {
-    if (!this.client) {
-      logger.error('Discord client not available in NFT monitoring service');
-      return null;
-    }
-    
-    try {
-      return await this.client.guilds.fetch(guildId);
-    } catch (error) {
-      logger.error(`Error fetching guild ${guildId}:`, error);
-      return null;
-    }
-  }
-
-  /**
-   * Log role updates to the configured log channel
-   */
-  async logRoleUpdate(guildConfig, user, nftCount) {
-    try {
-      if (!guildConfig.logChannelId) return;
-
-      const guild = await this.getGuild(guildConfig.guildId);
-      if (!guild) return;
-
-      const logChannel = await guild.channels.fetch(guildConfig.logChannelId);
-      if (!logChannel) return;
-
-      const embed = {
-        color: nftCount > 0 ? 0x00ff00 : 0xff0000,
-        title: '🔄 NFT Verification Update',
-        description: `User <@${user.discordId}> NFT verification status updated`,
-        fields: [
-          {
-            name: 'User',
-            value: `${user.username} (${user.discordId})`,
-            inline: true
-          },
-          {
-            name: 'NFT Count',
-            value: nftCount.toString(),
-            inline: true
-          },
-          {
-            name: 'Status',
-            value: nftCount > 0 ? '✅ Verified' : '❌ Unverified',
-            inline: true
-          },
-          {
-            name: 'Wallet',
-            value: `\`${user.walletAddress}\``,
-            inline: false
-          }
-        ],
-        timestamp: new Date().toISOString()
-      };
-
-      await logChannel.send({ embeds: [embed] });
-    } catch (error) {
-      logger.error('Error logging role update:', error);
+      return false; // No changes to user data if already unverified or no action taken
     }
   }
 
@@ -352,26 +212,36 @@ class NFTMonitoringService {
    */
   async manualCheckUser(discordId, guildId) {
     try {
-      const user = await User.findOne({ discordId });
-      if (!user) {
-        throw new Error('User not found');
+      const userProfile = await User.findOne({ discordId, guildId });
+      if (!userProfile) {
+        throw new Error('User not found in this guild.');
       }
 
-      const guildConfig = await BotConfig.findOne({ guildId });
-      if (!guildConfig || !guildConfig.nftVerification.enabled) {
-        throw new Error('NFT verification not enabled in this guild');
+      const guild = await this.client.guilds.fetch(guildId);
+      if (!guild) {
+        throw new Error('Guild not found.');
       }
 
-      const wasUpdated = await this.checkUserNFTs(user, guildConfig);
+      const member = await guild.members.fetch(discordId).catch(err => {
+        logger.warn(`Could not fetch member ${discordId} in guild ${guildId} for manual check: ${err.message}`);
+        return null;
+      });
+
+      if (!member) {
+        throw new Error('Discord member not found in the guild.');
+      }
+
+      const wasUpdated = await this.checkUserNFTs(userProfile, member);
+      
       return {
         success: true,
         wasUpdated,
         user: {
-          discordId: user.discordId,
-          username: user.username,
-          isVerified: user.isVerified,
-          nftCount: user.nftTokens.length,
-          lastCheck: user.lastVerificationCheck
+          discordId: userProfile.discordId,
+          username: userProfile.username,
+          isVerified: userProfile.isVerified,
+          nftCount: userProfile.nftTokens.length,
+          lastCheck: userProfile.lastVerificationCheck
         }
       };
     } catch (error) {

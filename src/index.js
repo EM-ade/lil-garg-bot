@@ -7,7 +7,7 @@ console.log(`[${new Date().toISOString()}] Bot starting...`);
 
 // Import modules
 const { loadCommands } = require("./utils/commandLoader");
-const setupDatabase = require("./database/connection"); // Corrected import
+const setupDatabase = require("./database/connection");
 const logger = require("./utils/logger");
 const ErrorHandler = require("./utils/errorHandler");
 const rateLimiter = require("./utils/rateLimiter");
@@ -18,6 +18,7 @@ const ButtonHandler = require("./utils/buttonHandler");
 const CleanupManager = require("./utils/cleanupManager");
 const NFTMonitoringService = require("./services/nftMonitoringService");
 const PetMaintenanceService = require("./services/petMaintenanceService");
+const { periodicRoleCheck } = require("./services/nftRoleManagerService");
 
 // Setup global error handlers
 ErrorHandler.setupGlobalErrorHandlers();
@@ -55,12 +56,12 @@ class LilGargsBot {
 
   async initialize() {
     try {
- console.log(`[${new Date().toISOString()}] Attempting to setup database...`);
+      console.log(`[${new Date().toISOString()}] Attempting to setup database...`);
       // Setup database connection
       await setupDatabase();
- console.log(`[${new Date().toISOString()}] Database setup complete.`);
+      console.log(`[${new Date().toISOString()}] Database setup complete.`);
 
- console.log(`[${new Date().toISOString()}] Attempting to load commands...`);
+      console.log(`[${new Date().toISOString()}] Attempting to load commands...`);
 
       // Load commands
       await loadCommands(this.client);
@@ -69,7 +70,7 @@ class LilGargsBot {
       await this.client.login(process.env.DISCORD_BOT_TOKEN);
 
       logger.info("Lil Gargs Bot initialized successfully!");
- console.log(`[${new Date().toISOString()}] Bot successfully logged in.`);
+      console.log(`[${new Date().toISOString()}] Bot successfully logged in.`);
     } catch (error) {
       logger.error("Failed to initialize bot:", error);
       process.exit(1);
@@ -93,6 +94,11 @@ class LilGargsBot {
         // Start cleanup manager
         this.cleanupManager.setupCleanupJobs();
         logger.info("Cleanup manager started successfully");
+
+        // Schedule periodic NFT role checks (e.g., every 30 minutes)
+        setInterval(() => periodicRoleCheck(this.client), 30 * 60 * 1000); // 30 minutes
+        logger.info("Scheduled periodic NFT role checks.");
+
       } catch (error) {
         logger.error("Error starting automated services:", error);
       }
@@ -115,7 +121,7 @@ class LilGargsBot {
           );
 
           if (!canExecute) {
-            return; // Rate limit message already sent
+            return; // Rate limit message already pictured
           }
 
           await command.execute(interaction);
@@ -129,6 +135,14 @@ class LilGargsBot {
       } else if (interaction.isModalSubmit()) {
         // Handle modal submissions
         await this.handleModalSubmit(interaction);
+      } else if (interaction.isButton()) {
+        // Handle button interactions specifically for the welcome_nft_verify button
+        if (interaction.customId === 'welcome_nft_verify') {
+            // Instead of opening a modal, we instruct the user to use the slash command
+            await interaction.reply({ content: 'Please use the `/verify-nft` command directly to verify your wallet.', ephemeral: true });
+        }
+        // You can add more button handlers here if needed
+        // else if (interaction.customId === 'another_button') { /* ... */ }
       }
     });
 
@@ -181,12 +195,14 @@ class LilGargsBot {
     try {
       const customId = interaction.customId;
       
-      if (customId === 'verify_wallet_modal') {
-        await this.handleVerifyWalletModal(interaction);
-      } else if (customId === 'ticket_create_modal') {
+      // The 'verify_wallet_modal' handling is now removed as verification is done via /verify-nft command
+      if (customId === 'ticket_create_modal') {
         await this.handleTicketCreateModal(interaction);
       } else if (customId === 'pet_adopt_modal') {
         await this.handlePetAdoptModal(interaction);
+      } else {
+          logger.warn(`Unhandled modal submission: ${customId}`);
+          await interaction.reply({ content: 'Unhandled modal submission.', ephemeral: true });
       }
     } catch (error) {
       logger.error('Error handling modal submit:', error);
@@ -197,142 +213,8 @@ class LilGargsBot {
     }
   }
 
-  async handleVerifyWalletModal(interaction) {
-    try {
-      const walletAddress = interaction.fields.getTextInputValue('wallet_address');
-      const userId = interaction.user.id;
-      const username = interaction.user.username;
-      const guild = interaction.guild;
-
-      // Initialize services
-      const NFTVerificationService = require('./services/nftVerification');
-      const RoleManager = require('./utils/roleManager');
-      const nftService = new NFTVerificationService();
-      const roleManager = new RoleManager(interaction.client);
-
-      // Validate wallet address
-      if (!nftService.isValidSolanaAddress(walletAddress)) {
-        return await interaction.reply({
-          content: '❌ Invalid Solana wallet address. Please provide a valid wallet address.',
-          ephemeral: true
-        });
-      }
-
-      // Check if user is already verified with this wallet
-      const { User } = require('./database/models');
-      const existingUser = await User.findOne({ discordId: userId });
-      if (existingUser && existingUser.isVerified && existingUser.walletAddress === walletAddress) {
-        return await interaction.reply({
-          content: '✅ You are already verified with this wallet address!',
-          ephemeral: true
-        });
-      }
-
-      // Verify NFT ownership
-      const verificationResult = await nftService.verifyNFTOwnership(walletAddress);
-
-      if (!verificationResult.isVerified) {
-        // Update user record with failed verification
-        await User.findOneAndUpdate(
-          { discordId: userId },
-          {
-            discordId: userId,
-            username: username,
-            walletAddress: walletAddress,
-            isVerified: false,
-            lastVerificationCheck: new Date(),
-            $push: {
-              verificationHistory: {
-                walletAddress: walletAddress,
-                verifiedAt: new Date(),
-                nftCount: 0,
-                status: 'failed'
-              }
-            }
-          },
-          { upsert: true, new: true }
-        );
-
-        const embed = new (require('discord.js').EmbedBuilder)()
-          .setColor('#FF0000')
-          .setTitle('❌ Verification Failed')
-          .setDescription('No Lil Gargs NFTs found in this wallet.')
-          .addFields({
-            name: 'Wallet Address',
-            value: walletAddress,
-            inline: false
-          })
-          .setTimestamp();
-
-        return await interaction.reply({ embeds: [embed], ephemeral: true });
-      }
-
-      // Create or update user record
-      const user = await User.findOneAndUpdate(
-        { discordId: userId },
-        {
-          discordId: userId,
-          username: username,
-          walletAddress: walletAddress,
-          isVerified: true,
-          nftTokens: verificationResult.nfts.map(nft => ({
-            mint: nft.mint,
-            name: nft.name,
-            image: nft.image,
-            verifiedAt: new Date()
-          })),
-          lastVerificationCheck: new Date(),
-          $push: {
-            verificationHistory: {
-              walletAddress: walletAddress,
-              verifiedAt: new Date(),
-              nftCount: verificationResult.nftCount,
-              status: 'success'
-            }
-          }
-        },
-        { upsert: true, new: true }
-      );
-
-      // Assign roles based on NFT count
-      await roleManager.assignRolesByNFTCount(guild, userId, verificationResult.nftCount);
-
-      // Create success embed
-      const embed = new (require('discord.js').EmbedBuilder)()
-        .setColor('#00FF00')
-        .setTitle('✅ Verification Successful!')
-        .setDescription(`Welcome to the Lil Gargs community!`)
-        .addFields(
-          {
-            name: 'Wallet Address',
-            value: walletAddress,
-            inline: false
-          },
-          {
-            name: 'NFTs Found',
-            value: verificationResult.nftCount.toString(),
-            inline: true
-          },
-          {
-            name: 'Status',
-            value: 'Verified',
-            inline: true
-          }
-        )
-        .setTimestamp();
-
-      await interaction.reply({ embeds: [embed], ephemeral: true });
-
-      // Log verification
-      logger.info(`User ${username} (${userId}) verified successfully with ${verificationResult.nftCount} NFTs`);
-    } catch (error) {
-      logger.error('Error in verify wallet modal:', error);
-      await interaction.reply({
-        content: '❌ An error occurred during verification. Please try again.',
-        ephemeral: true
-      });
-    }
-  }
+  // Removed handleVerifyWalletModal as its functionality is now in /verify-nft command
+  // async handleVerifyWalletModal(interaction) { ... } 
 
   async handleTicketCreateModal(interaction) {
     try {
@@ -604,8 +486,9 @@ Welcome to the family! 🎊`;
             emoji: '🐲'
           },
           {
+            // This button now suggests using the slash command instead of opening a modal
             customId: 'welcome_nft_verify',
-            label: 'Verify NFT',
+            label: 'Verify NFT (Use /verify-nft)',
             style: require('discord.js').ButtonStyle.Success,
             emoji: '💎'
           },

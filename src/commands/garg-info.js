@@ -1,5 +1,6 @@
 
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder } = require('discord.js');
+const { EmbedBuilder } = require('discord.js');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -8,16 +9,17 @@ module.exports = {
   async execute(interaction) {
     const gargInfoEmbed = new EmbedBuilder()
       .setColor(0x0099FF)
-      .setTitle('lil Gargs NFT Collection')
-      .setDescription('Here is some information about the lil Gargs NFT collection.')
+      .setTitle('About the lil Gargs Collection')
+      .setDescription('A collection of 666 handcrafted Gargoyles on the Solana blockchain. Each Garg, a unique fusion of ancient stone and mystical energies, stands vigilant, protecting the sacred lore of their creators. They are more than mere statues; they are sentient beings, bound by duty and empowered by the silent hum of the blockchain.')
+      .setThumbnail('https://i.imgur.com/p1sLqY7.png') // Replace with an actual thumbnail
       .addFields(
-        { name: 'Collection Link', value: '[Link to the collection on OpenSea](https://opensea.io/collection/lilgargs)', inline: true },
-        { name: 'Project Lore', value: 'The lil Gargs are a collection of mischievous creatures from the Gargoyleverse.', inline: true },
-        { name: 'Utility', value: 'Holding a lil Garg grants you access to exclusive channels and events.', inline: true }
+        { name: 'Marketplace', value: '[Magic Eden](https://magiceden.io/collections/solana/lil_gargs)', inline: true },
+        { name: 'Website', value: '[lilgargs.com](https://lilgargs.com)', inline: true },
+        { name: 'Twitter', value: '[@lilgargs](https://twitter.com/lilgargs)', inline: true }
       )
-      .setImage('https://i.imgur.com/example.png') // Replace with a relevant image
+      .setImage('https://i.imgur.com/FwOa2iH.jpeg') // Replace with a suitable image
       .setTimestamp()
-      .setFooter({ text: 'Gargoyleverse', iconURL: 'https://i.imgur.com/example.png' }); // Replace with a relevant icon
+      .setFooter({ text: 'Lil Gargs - Guardians of the Blockchain', iconURL: 'https://i.imgur.com/p1sLqY7.png' }); // Replace with an actual footer icon
 
     await interaction.reply({ embeds: [gargInfoEmbed] });
   },
