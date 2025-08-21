@@ -7,96 +7,45 @@ const logger = require('../utils/logger');
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('verify-nft')
+        .setName('verify')
         .setDescription('Verify your Lil Gargs NFT ownership')
         .addStringOption(option =>
-            option.setName('wallet_address')
+            option.setName('wallet')
                 .setDescription('Your Solana wallet address')
                 .setRequired(true)),
 
     async execute(interaction) {
-        console.log(`[${new Date().toISOString()}] [VERIFY-NFT] Command execution started`);
-        console.log(`[${new Date().toISOString()}] [VERIFY-NFT] Interaction ID: ${interaction.id}`);
-        console.log(`[${new Date().toISOString()}] [VERIFY-NFT] User: ${interaction.user.username} (${interaction.user.id})`);
-        console.log(`[${new Date().toISOString()}] [VERIFY-NFT] Guild: ${interaction.guild.name} (${interaction.guild.id})`);
-
-        // Check if the interaction has already been replied to or deferred
-        if (!interaction.replied && !interaction.deferred) {
-            console.log(`[${new Date().toISOString()}] [VERIFY-NFT] Deferring reply...`);
-            await interaction.deferReply({ ephemeral: true });
-            console.log(`[${new Date().toISOString()}] [VERIFY-NFT] Reply deferred successfully`);
-        } else {
-            console.log(`[${new Date().toISOString()}] [VERIFY-NFT] Interaction already replied to or deferred`);
-        }
+        await interaction.deferReply({ ephemeral: true });
 
         try {
-            // Log all interaction options for debugging
-            console.log(`[${new Date().toISOString()}] [VERIFY-NFT] Interaction options:`, interaction.options.data);
-            console.log(`[${new Date().toISOString()}] [VERIFY-NFT] Interaction options type:`, typeof interaction.options);
-
-            // Try different ways to get the wallet address
-            let walletAddress = null;
-            if (interaction.options.getString) {
-                walletAddress = interaction.options.getString('wallet_address');
-                console.log(`[${new Date().toISOString()}] [VERIFY-NFT] Wallet address from getString: ${walletAddress}`);
-            }
-
-            if (!walletAddress && interaction.options.data) {
-                const walletOption = interaction.options.data.find(option => option.name === 'wallet_address');
-                if (walletOption) {
-                    walletAddress = walletOption.value;
-                    console.log(`[${new Date().toISOString()}] [VERIFY-NFT] Wallet address from data: ${walletAddress}`);
-                }
-            }
-
-            console.log(`[${new Date().toISOString()}] [VERIFY-NFT] Final wallet address: ${walletAddress}`);
-
-            // Check if wallet address is null or empty
-            if (!walletAddress) {
-                console.log(`[${new Date().toISOString()}] [VERIFY-NFT] Wallet address is null or empty`);
-                return await interaction.editReply({
-                    content: '❌ No wallet address provided. Please provide a valid Solana wallet address.',
-                });
-            }
-
+            const walletAddress = interaction.options.getString('wallet');
             const userId = interaction.user.id;
             const username = interaction.user.username;
             const guild = interaction.guild;
 
             // Initialize services
-            console.log(`[${new Date().toISOString()}] [VERIFY-NFT] Initializing services...`);
             const nftService = new NFTVerificationService();
             const roleManager = new RoleManager(interaction.client);
-            console.log(`[${new Date().toISOString()}] [VERIFY-NFT] Services initialized`);
 
             // Validate wallet address
-            console.log(`[${new Date().toISOString()}] [VERIFY-NFT] Validating wallet address...`);
             if (!nftService.isValidSolanaAddress(walletAddress)) {
-                console.log(`[${new Date().toISOString()}] [VERIFY-NFT] Invalid wallet address: ${walletAddress}`);
                 return await interaction.editReply({
                     content: '❌ Invalid Solana wallet address. Please provide a valid wallet address.',
                 });
             }
-            console.log(`[${new Date().toISOString()}] [VERIFY-NFT] Wallet address is valid`);
 
             // Check if user is already verified with this wallet
-            console.log(`[${new Date().toISOString()}] [VERIFY-NFT] Checking if user is already verified...`);
             const existingUser = await User.findOne({ discordId: userId });
             if (existingUser && existingUser.isVerified && existingUser.walletAddress === walletAddress) {
-                console.log(`[${new Date().toISOString()}] [VERIFY-NFT] User is already verified with this wallet`);
                 return await interaction.editReply({
                     content: '✅ You are already verified with this wallet address!',
                 });
             }
-            console.log(`[${new Date().toISOString()}] [VERIFY-NFT] User is not verified or using a different wallet`);
 
             // Verify NFT ownership
-            console.log(`[${new Date().toISOString()}] [VERIFY-NFT] Verifying NFT ownership...`);
             const verificationResult = await nftService.verifyNFTOwnership(walletAddress);
-            console.log(`[${new Date().toISOString()}] [VERIFY-NFT] NFT verification result:`, verificationResult);
 
             if (!verificationResult.isVerified) {
-                console.log(`[${new Date().toISOString()}] [VERIFY-NFT] NFT verification failed`);
                 // Update user record with failed verification
                 await User.findOneAndUpdate(
                     { discordId: userId },
@@ -123,7 +72,6 @@ module.exports = {
                 return await interaction.editReply({ embeds: [embed] });
             }
 
-            console.log(`[${new Date().toISOString()}] [VERIFY-NFT] NFT verification successful`);
             // Create or update user record
             const user = await User.findOneAndUpdate(
                 { discordId: userId },
@@ -153,12 +101,9 @@ module.exports = {
 
             // Assign verified role
             try {
-                console.log(`[${new Date().toISOString()}] [VERIFY-NFT] Assigning verified role...`);
                 await roleManager.assignVerifiedRole(guild, userId);
-                console.log(`[${new Date().toISOString()}] [VERIFY-NFT] Verified role assigned successfully`);
             } catch (roleError) {
                 logger.error('Error assigning role:', roleError);
-                console.log(`[${new Date().toISOString()}] [VERIFY-NFT] Error assigning role: ${roleError.message}`);
                 // Continue with verification even if role assignment fails
             }
 
@@ -180,7 +125,7 @@ module.exports = {
                     .slice(0, 5) // Show max 5 NFTs
                     .map(nft => `• ${nft.name || 'Unknown Lil Garg'}`)
                     .join('\n');
-
+                
                 embed.addFields({
                     name: 'Your Lil Gargs NFTs',
                     value: nftList + (verificationResult.nfts.length > 5 ? `\n... and ${verificationResult.nfts.length - 5} more` : ''),
@@ -193,18 +138,14 @@ module.exports = {
                 embed.setThumbnail(verificationResult.nfts[0].image);
             }
 
-            console.log(`[${new Date().toISOString()}] [VERIFY-NFT] Sending success response...`);
             await interaction.editReply({ embeds: [embed] });
-            console.log(`[${new Date().toISOString()}] [VERIFY-NFT] Success response sent`);
 
             // Log successful verification
             logger.info(`User ${username} (${userId}) verified with wallet ${walletAddress} - ${verificationResult.nftCount} NFTs found`);
 
         } catch (error) {
             logger.error('Error in verify command:', error);
-            console.log(`[${new Date().toISOString()}] [VERIFY-NFT] Error in verify command: ${error.message}`);
-            console.log(`[${new Date().toISOString()}] [VERIFY-NFT] Error stack: ${error.stack}`);
-
+            
             const errorEmbed = new EmbedBuilder()
                 .setColor('#ff0000')
                 .setTitle('❌ Verification Error')
@@ -214,13 +155,7 @@ module.exports = {
                 )
                 .setTimestamp();
 
-            try {
-                console.log(`[${new Date().toISOString()}] [VERIFY-NFT] Sending error response...`);
-                await interaction.editReply({ embeds: [errorEmbed] });
-                console.log(`[${new Date().toISOString()}] [VERIFY-NFT] Error response sent`);
-            } catch (replyError) {
-                console.log(`[${new Date().toISOString()}] [VERIFY-NFT] Failed to send error response: ${replyError.message}`);
-            }
+            await interaction.editReply({ embeds: [errorEmbed] });
         }
     },
 };

@@ -59,11 +59,14 @@ module.exports = {
       // Process the question
       const result = await aiChatbot.processMessage(question, userId);
 
+      // Remove knowledge base text from response
+      const cleanedResponse = result.response.replace(/\(knowledge base: ".*?"\)/g, '');
+
       // Create response embed with Lil Gargs branding
       const embed = new EmbedBuilder()
         .setColor("#FF6B35") // Orange brand color
         .setTitle("🐲 Lil Gargs AI Assistant")
-        .setDescription(result.response)
+        .setDescription(cleanedResponse)
         .addFields({ name: "❓ Question", value: question, inline: false })
         .setFooter({
           text: `Asked by ${username}${

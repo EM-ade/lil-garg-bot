@@ -5,23 +5,80 @@ require("dotenv").config();
 
 console.log(`[${new Date().toISOString()}] Bot starting...`);
 
-// Import modules
-const { loadCommands } = require("./utils/commandLoader");
-const setupDatabase = require("./database/connection");
-const logger = require("./utils/logger");
-const ErrorHandler = require("./utils/errorHandler");
-const rateLimiter = require("./utils/rateLimiter");
-const chatManager = require("./services/chatManager");
-const AIChatbot = require("./services/aiChatbot");
-const SecurityManager = require("./utils/securityManager");
-const ButtonHandler = require("./utils/buttonHandler");
-const CleanupManager = require("./utils/cleanupManager");
-const NFTMonitoringService = require("./services/nftMonitoringService");
-const PetMaintenanceService = require("./services/petMaintenanceService");
-const { periodicRoleCheck } = require("./services/nftRoleManagerService");
+// Import modules with detailed logging
+// Import modules with detailed logging
+let loadCommands, setupDatabase, logger, ErrorHandler, rateLimiter, chatManager, AIChatbot, SecurityManager, ButtonHandler, CleanupManager, NFTMonitoringService, PetMaintenanceService, periodicRoleCheck;
 
-// Setup global error handlers
-ErrorHandler.setupGlobalErrorHandlers();
+try {
+    console.log(`[${new Date().toISOString()}] [IMPORT] Loading environment config...`);
+    const config = require("./config/environment");
+    console.log(`[${new Date().toISOString()}] [IMPORT] Environment config loaded successfully.`);
+
+    console.log(`[${new Date().toISOString()}] [IMPORT] Loading command loader...`);
+    ({ loadCommands } = require("./utils/commandLoader"));
+    console.log(`[${new Date().toISOString()}] [IMPORT] Command loader loaded successfully.`);
+
+    console.log(`[${new Date().toISOString()}] [IMPORT] Loading database connection...`);
+    setupDatabase = require("./database/connection");
+    console.log(`[${new Date().toISOString()}] [IMPORT] Database connection loaded successfully.`);
+
+    console.log(`[${new Date().toISOString()}] [IMPORT] Loading logger...`);
+    logger = require("./utils/logger");
+    console.log(`[${new Date().toISOString()}] [IMPORT] Logger loaded successfully.`);
+
+    console.log(`[${new Date().toISOString()}] [IMPORT] Loading error handler...`);
+    ErrorHandler = require("./utils/errorHandler");
+    console.log(`[${new Date().toISOString()}] [IMPORT] Error handler loaded successfully.`);
+
+    console.log(`[${new Date().toISOString()}] [IMPORT] Loading rate limiter...`);
+    rateLimiter = require("./utils/rateLimiter");
+    console.log(`[${new Date().toISOString()}] [IMPORT] Rate limiter loaded successfully.`);
+
+    console.log(`[${new Date().toISOString()}] [IMPORT] Loading chat manager...`);
+    chatManager = require("./services/chatManager");
+    console.log(`[${new Date().toISOString()}] [IMPORT] Chat manager loaded successfully.`);
+
+    console.log(`[${new Date().toISOString()}] [IMPORT] Loading AI chatbot...`);
+    AIChatbot = require("./services/aiChatbot");
+    console.log(`[${new Date().toISOString()}] [IMPORT] AI chatbot loaded successfully.`);
+
+    console.log(`[${new Date().toISOString()}] [IMPORT] Loading security manager...`);
+    SecurityManager = require("./utils/securityManager");
+    console.log(`[${new Date().toISOString()}] [IMPORT] Security manager loaded successfully.`);
+
+    console.log(`[${new Date().toISOString()}] [IMPORT] Loading button handler...`);
+    ButtonHandler = require("./utils/buttonHandler");
+    console.log(`[${new Date().toISOString()}] [IMPORT] Button handler loaded successfully.`);
+
+    console.log(`[${new Date().toISOString()}] [IMPORT] Loading cleanup manager...`);
+    CleanupManager = require("./utils/cleanupManager");
+    console.log(`[${new Date().toISOString()}] [IMPORT] Cleanup manager loaded successfully.`);
+
+    console.log(`[${new Date().toISOString()}] [IMPORT] Loading NFT monitoring service...`);
+    NFTMonitoringService = require("./services/nftMonitoringService");
+    console.log(`[${new Date().toISOString()}] [IMPORT] NFT monitoring service loaded successfully.`);
+
+    console.log(`[${new Date().toISOString()}] [IMPORT] Loading pet maintenance service...`);
+    PetMaintenanceService = require("./services/petMaintenanceService");
+    console.log(`[${new Date().toISOString()}] [IMPORT] Pet maintenance service loaded successfully.`);
+
+    console.log(`[${new Date().toISOString()}] [IMPORT] Loading NFT role manager service...`);
+    ({ periodicRoleCheck } = require("./services/nftRoleManagerService"));
+    console.log(`[${new Date().toISOString()}] [IMPORT] NFT role manager service loaded successfully.`);
+
+    console.log(`[${new Date().toISOString()}] [IMPORT] All modules loaded successfully.`);
+
+    // Setup global error handlers
+    console.log(`[${new Date().toISOString()}] [IMPORT] Setting up global error handlers...`);
+    ErrorHandler.setupGlobalErrorHandlers();
+    console.log(`[${new Date().toISOString()}] [IMPORT] Global error handlers set up successfully.`);
+} catch (importError) {
+    const errorTime = new Date();
+    console.error(`[${errorTime.toISOString()}] [IMPORT] Critical error during module imports:`, importError);
+    console.error(`[${errorTime.toISOString()}] [IMPORT] Error details:`, importError.message);
+    console.error(`[${errorTime.toISOString()}] [IMPORT] Error stack:`, importError.stack);
+    process.exit(1);
+}
 
 class LilGargsBot {
   constructor() {
@@ -36,42 +93,80 @@ class LilGargsBot {
 
     this.client.commands = new Collection();
     this.setupEventHandlers();
-    
+
     // Initialize security and button handlers
     this.securityManager = new SecurityManager(this.client);
     this.buttonHandler = new ButtonHandler(this.client);
     this.cleanupManager = new CleanupManager(this.client);
-    
+
     // Initialize NFT monitoring service
     this.nftMonitoringService = new NFTMonitoringService();
     this.nftMonitoringService.client = this.client; // Pass client reference
-    
+
     // Initialize pet maintenance service
     this.petMaintenanceService = new PetMaintenanceService();
-    
+
     // Make services available on the client for commands to access
     this.client.nftMonitoringService = this.nftMonitoringService;
     this.client.petMaintenanceService = this.petMaintenanceService;
   }
 
   async initialize() {
+    const initStartTime = new Date();
+    console.log(
+      `[${initStartTime.toISOString()}] [INIT] Starting bot initialization...`
+    );
+
     try {
-      console.log(`[${new Date().toISOString()}] Attempting to setup database...`);
+      console.log(
+        `[${new Date().toISOString()}] [INIT] Attempting to setup database...`
+      );
       // Setup database connection
       await setupDatabase();
-      console.log(`[${new Date().toISOString()}] Database setup complete.`);
+      console.log(
+        `[${new Date().toISOString()}] [INIT] Database setup complete.`
+      );
 
-      console.log(`[${new Date().toISOString()}] Attempting to load commands...`);
-
+      console.log(
+        `[${new Date().toISOString()}] [INIT] Attempting to load commands...`
+      );
       // Load commands
       await loadCommands(this.client);
+      console.log(
+        `[${new Date().toISOString()}] [INIT] Commands loaded successfully.`
+      );
 
+      console.log(
+        `[${new Date().toISOString()}] [INIT] Attempting to login to Discord...`
+      );
       // Login to Discord
       await this.client.login(process.env.DISCORD_BOT_TOKEN);
+      console.log(
+        `[${new Date().toISOString()}] [INIT] Discord login successful.`
+      );
 
+      const initEndTime = new Date();
+      const initDuration = (initEndTime - initStartTime) / 1000;
       logger.info("Lil Gargs Bot initialized successfully!");
-      console.log(`[${new Date().toISOString()}] Bot successfully logged in.`);
+      console.log(
+        `[${initEndTime.toISOString()}] [INIT] Bot initialization complete (took ${initDuration.toFixed(
+          2
+        )}s).`
+      );
     } catch (error) {
+      const errorTime = new Date();
+      console.error(
+        `[${errorTime.toISOString()}] [INIT] Failed to initialize bot:`,
+        error
+      );
+      console.error(
+        `[${errorTime.toISOString()}] [INIT] Error details:`,
+        error.message
+      );
+      console.error(
+        `[${errorTime.toISOString()}] [INIT] Error stack:`,
+        error.stack
+      );
       logger.error("Failed to initialize bot:", error);
       process.exit(1);
     }
@@ -80,17 +175,17 @@ class LilGargsBot {
   setupEventHandlers() {
     this.client.once("ready", async () => {
       logger.info(`Bot is ready! Logged in as ${this.client.user.tag}`);
-      
+
       // Start automated services
       try {
         // Start NFT monitoring service
         await this.nftMonitoringService.startMonitoring();
         logger.info("NFT monitoring service started successfully");
-        
+
         // Start pet maintenance service
         await this.petMaintenanceService.startMaintenance();
         logger.info("Pet maintenance service started successfully");
-        
+
         // Start cleanup manager
         this.cleanupManager.setupCleanupJobs();
         logger.info("Cleanup manager started successfully");
@@ -98,7 +193,6 @@ class LilGargsBot {
         // Schedule periodic NFT role checks (e.g., every 30 minutes)
         setInterval(() => periodicRoleCheck(this.client), 30 * 60 * 1000); // 30 minutes
         logger.info("Scheduled periodic NFT role checks.");
-
       } catch (error) {
         logger.error("Error starting automated services:", error);
       }
@@ -137,9 +231,13 @@ class LilGargsBot {
         await this.handleModalSubmit(interaction);
       } else if (interaction.isButton()) {
         // Handle button interactions specifically for the welcome_nft_verify button
-        if (interaction.customId === 'welcome_nft_verify') {
-            // Instead of opening a modal, we instruct the user to use the slash command
-            await interaction.reply({ content: 'Please use the `/verify-nft` command directly to verify your wallet.', ephemeral: true });
+        if (interaction.customId === "welcome_nft_verify") {
+          // Instead of opening a modal, we instruct the user to use the slash command
+          await interaction.reply({
+            content:
+              "Please use the `/verify-nft` command directly to verify your wallet.",
+            ephemeral: true,
+          });
         }
         // You can add more button handlers here if needed
         // else if (interaction.customId === 'another_button') { /* ... */ }
@@ -194,33 +292,38 @@ class LilGargsBot {
   async handleModalSubmit(interaction) {
     try {
       const customId = interaction.customId;
-      
+
       // The 'verify_wallet_modal' handling is now removed as verification is done via /verify-nft command
-      if (customId === 'ticket_create_modal') {
+      if (customId === "ticket_create_modal") {
         await this.handleTicketCreateModal(interaction);
-      } else if (customId === 'pet_adopt_modal') {
+      } else if (customId === "pet_adopt_modal") {
         await this.handlePetAdoptModal(interaction);
       } else {
-          logger.warn(`Unhandled modal submission: ${customId}`);
-          await interaction.reply({ content: 'Unhandled modal submission.', ephemeral: true });
+        logger.warn(`Unhandled modal submission: ${customId}`);
+        await interaction.reply({
+          content: "Unhandled modal submission.",
+          ephemeral: true,
+        });
       }
     } catch (error) {
-      logger.error('Error handling modal submit:', error);
+      logger.error("Error handling modal submit:", error);
       await interaction.reply({
-        content: '❌ An error occurred while processing your submission.',
-        ephemeral: true
+        content: "❌ An error occurred while processing your submission.",
+        ephemeral: true,
       });
     }
   }
 
   // Removed handleVerifyWalletModal as its functionality is now in /verify-nft command
-  // async handleVerifyWalletModal(interaction) { ... } 
+  // async handleVerifyWalletModal(interaction) { ... }
 
   async handleTicketCreateModal(interaction) {
     try {
-      const subject = interaction.fields.getTextInputValue('ticket_subject');
-      const description = interaction.fields.getTextInputValue('ticket_description');
-      const category = interaction.fields.getTextInputValue('ticket_category') || 'general';
+      const subject = interaction.fields.getTextInputValue("ticket_subject");
+      const description =
+        interaction.fields.getTextInputValue("ticket_description");
+      const category =
+        interaction.fields.getTextInputValue("ticket_category") || "general";
       const userId = interaction.user.id;
       const username = interaction.user.username;
       const guild = interaction.guild;
@@ -230,21 +333,22 @@ class LilGargsBot {
       const ticketChannel = await guild.channels.create({
         name: channelName,
         type: 0, // Text channel
-        parent: guild.channels.cache.find(ch => ch.name === 'Tickets')?.id || null,
+        parent:
+          guild.channels.cache.find((ch) => ch.name === "Tickets")?.id || null,
         permissionOverwrites: [
           {
             id: guild.id,
-            deny: ['ViewChannel']
+            deny: ["ViewChannel"],
           },
           {
             id: userId,
-            allow: ['ViewChannel', 'SendMessages', 'ReadMessageHistory']
-          }
-        ]
+            allow: ["ViewChannel", "SendMessages", "ReadMessageHistory"],
+          },
+        ],
       });
 
       // Create ticket record
-      const { Ticket } = require('./database/models');
+      const { Ticket } = require("./database/models");
       const ticket = new Ticket({
         userId: userId,
         username: username,
@@ -253,32 +357,32 @@ class LilGargsBot {
         subject: subject,
         description: description,
         category: category,
-        status: 'open',
-        priority: 'medium'
+        status: "open",
+        priority: "medium",
       });
 
       await ticket.save();
 
       // Send ticket confirmation
-      const embed = new (require('discord.js').EmbedBuilder)()
-        .setColor('#FF6B35')
-        .setTitle('🎫 Ticket Created Successfully')
+      const embed = new (require("discord.js").EmbedBuilder)()
+        .setColor("#FF6B35")
+        .setTitle("🎫 Ticket Created Successfully")
         .setDescription(`Your ticket has been created in ${ticketChannel}`)
         .addFields(
           {
-            name: 'Subject',
+            name: "Subject",
             value: subject,
-            inline: false
+            inline: false,
           },
           {
-            name: 'Category',
+            name: "Category",
             value: category,
-            inline: true
+            inline: true,
           },
           {
-            name: 'Status',
-            value: 'Open',
-            inline: true
+            name: "Status",
+            value: "Open",
+            inline: true,
           }
         )
         .setTimestamp();
@@ -286,68 +390,73 @@ class LilGargsBot {
       await interaction.reply({ embeds: [embed], ephemeral: true });
 
       // Send initial message in ticket channel
-      const ticketEmbed = new (require('discord.js').EmbedBuilder)()
-        .setColor('#FF6B35')
+      const ticketEmbed = new (require("discord.js").EmbedBuilder)()
+        .setColor("#FF6B35")
         .setTitle(`🎫 Ticket #${ticket._id.toString().slice(-6)}`)
-        .setDescription(`**Subject:** ${subject}\n\n**Description:** ${description}`)
+        .setDescription(
+          `**Subject:** ${subject}\n\n**Description:** ${description}`
+        )
         .addFields(
           {
-            name: 'Created By',
+            name: "Created By",
             value: username,
-            inline: true
+            inline: true,
           },
           {
-            name: 'Category',
+            name: "Category",
             value: category,
-            inline: true
+            inline: true,
           },
           {
-            name: 'Status',
-            value: 'Open',
-            inline: true
+            name: "Status",
+            value: "Open",
+            inline: true,
           }
         )
         .setTimestamp();
 
       await ticketChannel.send({
         content: `Welcome ${interaction.user}! Staff will be with you shortly.`,
-        embeds: [ticketEmbed]
+        embeds: [ticketEmbed],
       });
 
-      logger.info(`Ticket created for ${username} (${userId}) in ${guild.name}`);
+      logger.info(
+        `Ticket created for ${username} (${userId}) in ${guild.name}`
+      );
     } catch (error) {
-      logger.error('Error in ticket create modal:', error);
+      logger.error("Error in ticket create modal:", error);
       await interaction.reply({
-        content: '❌ An error occurred while creating your ticket. Please try again.',
-        ephemeral: true
+        content:
+          "❌ An error occurred while creating your ticket. Please try again.",
+        ephemeral: true,
       });
     }
   }
 
   async handlePetAdoptModal(interaction) {
     try {
-      const petName = interaction.fields.getTextInputValue('pet_name');
+      const petName = interaction.fields.getTextInputValue("pet_name");
       const userId = interaction.user.id;
       const username = interaction.user.username;
       const guildId = interaction.guild.id;
 
       // Check if user already has a pet
-      const { Pet } = require('./database/models');
+      const { Pet } = require("./database/models");
       const existingPet = await Pet.findOne({ ownerId: userId, guildId });
       if (existingPet) {
         return await interaction.reply({
           content: `❌ You already have a pet named **${existingPet.name}**!`,
-          ephemeral: true
+          ephemeral: true,
         });
       }
 
       // Check if pet system is enabled
-      const { BotConfig } = require('./database/models');
+      const { BotConfig } = require("./database/models");
       const botConfig = await BotConfig.findOne({ guildId });
       if (!botConfig?.petSystem?.enabled) {
         return await interaction.reply({
-          content: '❌ Pet system is not enabled in this server.',
-          ephemeral: true
+          content: "❌ Pet system is not enabled in this server.",
+          ephemeral: true,
         });
       }
 
@@ -358,31 +467,31 @@ class LilGargsBot {
         guildId: guildId,
         name: petName,
         element: this.getRandomElement(),
-        personality: this.getRandomPersonality()
+        personality: this.getRandomPersonality(),
       });
 
       await pet.save();
 
       // Create success embed
-      const embed = new (require('discord.js').EmbedBuilder)()
-        .setColor('#00FF00')
-        .setTitle('🐲 Pet Adoption Successful!')
+      const embed = new (require("discord.js").EmbedBuilder)()
+        .setColor("#00FF00")
+        .setTitle("🐲 Pet Adoption Successful!")
         .setDescription(`Congratulations! You've adopted **${petName}**!`)
         .addFields(
           {
-            name: 'Element',
+            name: "Element",
             value: pet.element,
-            inline: true
+            inline: true,
           },
           {
-            name: 'Personality',
+            name: "Personality",
             value: pet.personality,
-            inline: true
+            inline: true,
           },
           {
-            name: 'Level',
-            value: '1',
-            inline: true
+            name: "Level",
+            value: "1",
+            inline: true,
           }
         )
         .setFooter({ text: `Use /pet status to check on ${petName}!` })
@@ -390,23 +499,26 @@ class LilGargsBot {
 
       await interaction.reply({ embeds: [embed], ephemeral: true });
 
-      logger.info(`Pet ${petName} adopted by ${username} (${userId}) in ${interaction.guild.name}`);
+      logger.info(
+        `Pet ${petName} adopted by ${username} (${userId}) in ${interaction.guild.name}`
+      );
     } catch (error) {
-      logger.error('Error in pet adopt modal:', error);
+      logger.error("Error in pet adopt modal:", error);
       await interaction.reply({
-        content: '❌ An error occurred while adopting your pet. Please try again.',
-        ephemeral: true
+        content:
+          "❌ An error occurred while adopting your pet. Please try again.",
+        ephemeral: true,
       });
     }
   }
 
   getRandomElement() {
-    const elements = ['Fire', 'Ice', 'Nature', 'Storm', 'Shadow'];
+    const elements = ["Fire", "Ice", "Nature", "Storm", "Shadow"];
     return elements[Math.floor(Math.random() * elements.length)];
   }
 
   getRandomPersonality() {
-    const personalities = ['Brave', 'Curious', 'Loyal', 'Playful'];
+    const personalities = ["Brave", "Curious", "Loyal", "Playful"];
     return personalities[Math.floor(Math.random() * personalities.length)];
   }
 
@@ -444,7 +556,7 @@ class LilGargsBot {
       // Generate AI welcome message
       const aiChatbot = new AIChatbot();
       let welcomeMessage = null;
-      
+
       // Check if custom welcome message is configured
       if (botConfig.behavior?.welcomeMessage?.customMessage) {
         welcomeMessage = botConfig.behavior.welcomeMessage.customMessage;
@@ -452,10 +564,10 @@ class LilGargsBot {
         // Generate AI-powered welcome message
         try {
           welcomeMessage = await aiChatbot.generateWelcomeMessage(member, {
-            name: member.guild.name
+            name: member.guild.name,
           });
         } catch (error) {
-          logger.error('Failed to generate AI welcome message:', error);
+          logger.error("Failed to generate AI welcome message:", error);
           // Use fallback message
           welcomeMessage = `🎉 Welcome to Lil Gargs, **${member.user.username}**! 🐲
 
@@ -480,24 +592,24 @@ Welcome to the family! 🎊`;
       if (botConfig.behavior?.welcomeMessage?.showButtons) {
         const welcomeButtons = EmbedBuilder.createButtonRow([
           {
-            customId: 'welcome_pet_adopt',
-            label: 'Adopt Pet',
-            style: require('discord.js').ButtonStyle.Primary,
-            emoji: '🐲'
+            customId: "welcome_pet_adopt",
+            label: "Adopt Pet",
+            style: require("discord.js").ButtonStyle.Primary,
+            emoji: "🐲",
           },
           {
             // This button now suggests using the slash command instead of opening a modal
-            customId: 'welcome_nft_verify',
-            label: 'Verify NFT (Use /verify-nft)',
-            style: require('discord.js').ButtonStyle.Success,
-            emoji: '💎'
+            customId: "welcome_nft_verify",
+            label: "Verify NFT (Use /verify-nft)",
+            style: require("discord.js").ButtonStyle.Success,
+            emoji: "💎",
           },
           {
-            customId: 'welcome_battle_start',
-            label: 'Start Battle',
-            style: require('discord.js').ButtonStyle.Secondary,
-            emoji: '⚔️'
-          }
+            customId: "welcome_battle_start",
+            label: "Start Battle",
+            style: require("discord.js").ButtonStyle.Secondary,
+            emoji: "⚔️",
+          },
         ]);
         components.push(welcomeButtons);
       }
@@ -505,7 +617,7 @@ Welcome to the family! 🎊`;
       await welcomeChannel.send({
         content: `Welcome ${member}! 🎉`,
         embeds: [embed],
-        components: components
+        components: components,
       });
 
       logger.info(
@@ -518,5 +630,18 @@ Welcome to the family! 🎊`;
 }
 
 // Start the bot
-const bot = new LilGargsBot();
-bot.initialize();
+console.log(`[${new Date().toISOString()}] [STARTUP] Creating bot instance...`);
+try {
+    const bot = new LilGargsBot();
+    console.log(`[${new Date().toISOString()}] [STARTUP] Bot instance created successfully.`);
+
+    console.log(`[${new Date().toISOString()}] [STARTUP] Starting bot initialization...`);
+    bot.initialize();
+    console.log(`[${new Date().toISOString()}] [STARTUP] Bot initialization called successfully.`);
+} catch (startupError) {
+    const errorTime = new Date();
+    console.error(`[${errorTime.toISOString()}] [STARTUP] Critical error during bot startup:`, startupError);
+    console.error(`[${errorTime.toISOString()}] [STARTUP] Error details:`, startupError.message);
+    console.error(`[${errorTime.toISOString()}] [STARTUP] Error stack:`, startupError.stack);
+    process.exit(1);
+}

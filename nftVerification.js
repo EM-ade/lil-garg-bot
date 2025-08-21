@@ -16,12 +16,9 @@ class NFTVerificationService {
    */
   isValidSolanaAddress(address) {
     try {
-      logger.info(`Validating Solana address: ${address}`);
       new PublicKey(address);
-      logger.info(`Address ${address} is valid`);
       return true;
     } catch (error) {
-      logger.warn(`Address ${address} is invalid: ${error.message}`);
       return false;
     }
   }
