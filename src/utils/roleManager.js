@@ -1,6 +1,101 @@
 const { PermissionFlagsBits } = require('discord.js');
-const { User, BotConfig } = require('../database/models');
 const logger = require('./logger');
+const {
+    isSupabaseEnabled,
+    getUserStore,
+    getBotConfigStore,
+} = require('../services/serviceFactory');
+
+const userStore = getUserStore();
+const botConfigStore = getBotConfigStore();
+
+function normalizeBotConfig(record) {
+    if (!record) {
+        return null;
+    }
+
+    if (!isSupabaseEnabled()) {
+        const data = typeof record.toObject === 'function' ? record.toObject() : record;
+        return {
+            ...data,
+            adminRoleIds: data.adminRoleIds || [],
+            moderatorRoleIds: data.moderatorRoleIds || [],
+            nftVerification: data.nftVerification || data.settings?.nftVerification || {},
+            settings: data.settings || {},
+            stats: data.stats || {},
+        };
+    }
+
+    const settings = record.settings || {};
+    return {
+        guildId: record.guild_id,
+        guildName: record.guild_name,
+        verifiedRoleId: settings.nftVerification?.verifiedRoleId || record.verified_role_id || null,
+        verifiedRoleName: settings.nftVerification?.verifiedRoleName || record.verified_role_name || null,
+        adminRoleIds: settings.adminRoleIds || [],
+        moderatorRoleIds: settings.moderatorRoleIds || [],
+        nftVerification: settings.nftVerification || {},
+        settings,
+        stats: record.stats || {},
+    };
+}
+
+async function fetchBotConfig(guildId) {
+    if (isSupabaseEnabled()) {
+        const config = await botConfigStore.getBotConfigByGuildId(guildId);
+        return normalizeBotConfig(config);
+    }
+
+    const config = await botConfigStore.findOne({ guildId });
+    return normalizeBotConfig(config);
+}
+
+function normalizeUser(record) {
+    if (!record) {
+        return null;
+    }
+
+    if (!isSupabaseEnabled()) {
+        const data = typeof record.toObject === 'function' ? record.toObject() : record;
+        return {
+            id: data._id ? data._id.toString() : data.id,
+            discordId: data.discordId,
+            guildId: data.guildId,
+            walletAddress: data.walletAddress,
+            isVerified: data.isVerified,
+            nftTokens: data.nftTokens || [],
+            roles: data.roles || [],
+            lastVerificationCheck: data.lastVerificationCheck,
+        };
+    }
+
+    return {
+        id: record.id,
+        discordId: record.discord_id,
+        guildId: record.guild_id,
+        walletAddress: record.wallet_address,
+        isVerified: record.is_verified,
+        nftTokens: record.user_nft_tokens || [],
+        roles: record.user_roles || [],
+        lastVerificationCheck: record.last_verification_check,
+    };
+}
+
+async function getSupabaseUser(discordId, guildId, username = null) {
+    let user = await userStore.findUserByDiscordAndGuild(discordId, guildId);
+    if (!user && userStore.ensureUserRecord) {
+        user = await userStore.ensureUserRecord({ discordId, guildId, username });
+    }
+    return user;
+}
+
+async function getUser(discordId, guildId, username = null) {
+    if (isSupabaseEnabled()) {
+        return getSupabaseUser(discordId, guildId, username);
+    }
+
+    return userStore.findOne({ discordId, guildId });
+}
 
 class RoleManager {
     constructor(client) {
@@ -53,18 +148,30 @@ class RoleManager {
             await member.roles.add(role);
             
             // Update user record
-            await User.findOneAndUpdate(
-                { discordId: userId },
-                {
-                    $addToSet: {
-                        roles: {
-                            roleId: role.id,
-                            roleName: role.name,
-                            assignedAt: new Date()
-                        }
-                    }
+            if (isSupabaseEnabled()) {
+                const userRecord = await getSupabaseUser(userId, guild.id, member.user.username);
+                if (userRecord && userStore.addUserRole) {
+                    await userStore.addUserRole(userRecord.id, {
+                        roleId: role.id,
+                        roleName: role.name,
+                        assignedAt: new Date().toISOString(),
+                    });
                 }
-            );
+            } else {
+                await userStore.findOneAndUpdate(
+                    { discordId: userId, guildId: guild.id },
+                    {
+                        $addToSet: {
+                            roles: {
+                                roleId: role.id,
+                                roleName: role.name,
+                                assignedAt: new Date(),
+                            },
+                        },
+                    },
+                    { upsert: true }
+                );
+            }
 
             logger.info(`Assigned verified role to user ${userId} in guild ${guild.name}`);
             return { success: true, message: 'Verified role assigned successfully' };
@@ -96,15 +203,21 @@ class RoleManager {
 
             await member.roles.remove(role);
             
-            // Update user record
-            await User.findOneAndUpdate(
-                { discordId: userId },
-                {
-                    $pull: {
-                        roles: { roleId: role.id }
-                    }
+            if (isSupabaseEnabled()) {
+                const userRecord = await userStore.findUserByDiscordAndGuild(userId, guild.id);
+                if (userRecord && userStore.removeUserRole) {
+                    await userStore.removeUserRole(userRecord.id, role.id);
                 }
-            );
+            } else {
+                await userStore.findOneAndUpdate(
+                    { discordId: userId, guildId: guild.id },
+                    {
+                        $pull: {
+                            roles: { roleId: role.id },
+                        },
+                    }
+                );
+            }
 
             logger.info(`Removed verified role from user ${userId} in guild ${guild.name}`);
             return { success: true, message: 'Verified role removed successfully' };
@@ -136,7 +249,7 @@ class RoleManager {
             }
 
             // Check bot config for admin roles
-            const botConfig = await BotConfig.findOne({ guildId: guild.id });
+            const botConfig = await fetchBotConfig(guild.id);
             if (botConfig && botConfig.adminRoleIds.length > 0) {
                 const hasAdminRole = member.roles.cache.some(role => 
                     botConfig.adminRoleIds.includes(role.id)
@@ -174,7 +287,7 @@ class RoleManager {
             }
 
             // Check bot config for moderator roles
-            const botConfig = await BotConfig.findOne({ guildId: guild.id });
+            const botConfig = await fetchBotConfig(guild.id);
             if (botConfig && botConfig.moderatorRoleIds.length > 0) {
                 const hasModRole = member.roles.cache.some(role => 
                     botConfig.moderatorRoleIds.includes(role.id)
@@ -196,7 +309,16 @@ class RoleManager {
      */
     async getUserVerificationStatus(guild, userId) {
         try {
-            const user = await User.findOne({ discordId: userId });
+            const botConfig = await fetchBotConfig(guild.id);
+            const roleName = botConfig?.nftVerification?.verifiedRoleName || botConfig?.verifiedRoleName || 'Lil Gargs Holder';
+
+            let user;
+            if (isSupabaseEnabled()) {
+                const detailed = await userStore.fetchUserDetailsByDiscordAndGuild(userId, guild.id);
+                user = normalizeUser(detailed);
+            } else {
+                user = normalizeUser(await userStore.findOne({ discordId: userId, guildId: guild.id }));
+            }
             const member = await guild.members.fetch(userId);
             
             if (!user || !member) {
@@ -208,8 +330,6 @@ class RoleManager {
             }
 
             // Check if user has verified role
-            const botConfig = await BotConfig.findOne({ guildId: guild.id });
-            const roleName = botConfig?.verifiedRoleName || 'Lil Gargs Holder';
             const verifiedRole = guild.roles.cache.find(r => r.name === roleName);
             const hasRole = verifiedRole ? member.roles.cache.has(verifiedRole.id) : false;
 
@@ -237,8 +357,8 @@ class RoleManager {
     async syncUserRoles(guild, userId) {
         try {
             const status = await this.getUserVerificationStatus(guild, userId);
-            const botConfig = await BotConfig.findOne({ guildId: guild.id });
-            const roleName = botConfig?.verifiedRoleName || 'Lil Gargs Holder';
+            const botConfig = await fetchBotConfig(guild.id);
+            const roleName = botConfig?.nftVerification?.verifiedRoleName || botConfig?.verifiedRoleName || 'Lil Gargs Holder';
 
             if (status.isVerified && !status.hasRole) {
                 // User is verified but doesn't have role - assign it
@@ -263,7 +383,12 @@ class RoleManager {
      */
     async bulkSyncRoles(guild) {
         try {
-            const users = await User.find({});
+            let users;
+            if (isSupabaseEnabled()) {
+                users = await userStore.listUsersByGuild(guild.id);
+            } else {
+                users = await userStore.find({ guildId: guild.id });
+            }
             const results = {
                 processed: 0,
                 assigned: 0,
@@ -273,7 +398,8 @@ class RoleManager {
 
             for (const user of users) {
                 try {
-                    const result = await this.syncUserRoles(guild, user.discordId);
+                    const discordId = isSupabaseEnabled() ? user.discord_id : user.discordId;
+                    const result = await this.syncUserRoles(guild, discordId);
                     results.processed++;
                     
                     if (result.action === 'assigned') {

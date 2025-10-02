@@ -9,7 +9,7 @@ if (!fs.existsSync(logsDir)) {
 }
 
 const logger = winston.createLogger({
-    level: 'info',
+    level: 'debug', // Changed from 'info' to 'debug'
     format: winston.format.combine(
         winston.format.timestamp({
             format: 'YYYY-MM-DD HH:mm:ss'
@@ -24,22 +24,23 @@ const logger = winston.createLogger({
             filename: path.join(logsDir, 'error.log'), 
             level: 'error' 
         }),
-        // Write all logs with importance level of `info` or less to `combined.log`
-        new winston.transports.File({ 
-            filename: path.join(logsDir, 'combined.log') 
+        // Write all logs with importance level of `debug` or less to `combined.log`
+        new winston.transports.File({
+            filename: path.join(logsDir, 'combined.log'),
+            level: 'debug' // Ensure debug messages are written to combined.log
         }),
     ],
 });
 
 // If we're not in production then log to the `console` with the format:
 // `${info.level}: ${info.message} JSON.stringify({ ...rest }) `
-if (process.env.NODE_ENV !== 'production') {
-    logger.add(new winston.transports.Console({
-        format: winston.format.combine(
-            winston.format.colorize(),
-            winston.format.simple()
-        )
-    }));
-}
+// Always log to the console with debug level for development/debugging
+logger.add(new winston.transports.Console({
+    level: 'debug', // Ensure debug messages are shown in console
+    format: winston.format.combine(
+        winston.format.colorize(),
+        winston.format.simple()
+    )
+}));
 
 module.exports = logger;

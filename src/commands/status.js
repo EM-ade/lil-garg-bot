@@ -1,8 +1,24 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const { User, Document, BotConfig } = require('../database/models');
 const RoleManager = require('../utils/roleManager');
 const AIChatbot = require('../services/aiChatbot');
 const logger = require('../utils/logger');
+const {
+    isSupabaseEnabled,
+    getUserStore,
+    getDocumentStore,
+    getBotConfigStore,
+} = require('../services/serviceFactory');
+const {
+    verificationSessionService,
+} = require('../services/verificationSessionService');
+const {
+    buildVerificationLink,
+    buildSessionEmbed,
+} = require('../utils/verificationSessionUi');
+
+const userStore = getUserStore();
+const documentStore = getDocumentStore();
+const botConfigStore = getBotConfigStore();
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -23,14 +39,24 @@ module.exports = {
             const userStatus = await roleManager.getUserVerificationStatus(guild, userId);
             
             // Get user data from database
-            const userData = await User.findOne({ discordId: userId });
+            let userData;
+            if (isSupabaseEnabled()) {
+                userData = await userStore.findUserByDiscordAndGuild(userId, guildId);
+            } else {
+                userData = await userStore.findOne({ discordId: userId });
+            }
 
             // Get AI chat stats
             const aiChatbot = new AIChatbot();
             const chatStats = await aiChatbot.getChatStats();
 
             // Get bot config for this guild
-            const botConfig = await BotConfig.findOne({ guildId }) || {};
+            let botConfig;
+            if (isSupabaseEnabled()) {
+                botConfig = (await botConfigStore.getBotConfigByGuildId(guildId)) || {};
+            } else {
+                botConfig = await botConfigStore.findOne({ guildId }) || {};
+            }
 
             // Create main embed
             const embed = new EmbedBuilder()
@@ -63,12 +89,18 @@ module.exports = {
             // User activity section if user exists in database
             if (userData) {
                 let activityText = '';
-                activityText += `📅 **Member Since:** ${new Date(userData.firstJoined).toLocaleDateString()}\n`;
-                activityText += `🔄 **Verification Attempts:** ${userData.verificationHistory.length}\n`;
-                
-                if (userData.nftTokens.length > 0) {
-                    activityText += `🎨 **NFTs in Database:** ${userData.nftTokens.length}\n`;
-                    const recentNFT = userData.nftTokens[userData.nftTokens.length - 1];
+                const firstJoined = userData.firstJoined || userData.created_at;
+                if (firstJoined) {
+                    activityText += `📅 **Member Since:** ${new Date(firstJoined).toLocaleDateString()}\n`;
+                }
+
+                const verificationHistory = userData.verificationHistory || userData.user_verification_history || [];
+                activityText += `🔄 **Verification Attempts:** ${verificationHistory.length}\n`;
+
+                const nftTokens = userData.nftTokens || userData.user_nft_tokens || [];
+                if (nftTokens.length > 0) {
+                    activityText += `🎨 **NFTs in Database:** ${nftTokens.length}\n`;
+                    const recentNFT = nftTokens[nftTokens.length - 1];
                     if (recentNFT.name) {
                         activityText += `🎭 **Latest NFT:** ${recentNFT.name}\n`;
                     }
@@ -92,7 +124,12 @@ module.exports = {
             }
 
             // Get total verified users
-            const totalVerifiedUsers = await User.countDocuments({ isVerified: true });
+            let totalVerifiedUsers = 0;
+            if (isSupabaseEnabled() && userStore.countVerifiedUsers) {
+                totalVerifiedUsers = await userStore.countVerifiedUsers();
+            } else if (userStore.countDocuments) {
+                totalVerifiedUsers = await userStore.countDocuments({ isVerified: true });
+            }
             botStatsText += `👥 **Verified Users:** ${totalVerifiedUsers}\n`;
 
             embed.addFields({
@@ -134,11 +171,44 @@ module.exports = {
                 commandsText += `• \`/remove-document\` - Remove documents from knowledge base\n`;
             }
 
+            if (isSupabaseEnabled() && !userStatus.isVerified) {
+                commandsText += `• \`/verify\` - Launch secure verification portal\n`;
+            }
+
             embed.addFields({
                 name: '🛠️ Available Commands',
                 value: commandsText,
                 inline: false
             });
+
+            if (isSupabaseEnabled() && !userStatus.isVerified) {
+                try {
+                    const session = await verificationSessionService.createSession({
+                        discordId: userId,
+                        guildId,
+                        walletAddress: userData?.wallet_address || userData?.walletAddress,
+                        username,
+                    });
+                    const verificationUrl = buildVerificationLink(session.token);
+                    if (verificationUrl) {
+                        const { embed: sessionEmbed, components } = buildSessionEmbed({
+                            walletAddress: userData?.wallet_address || userData?.walletAddress || 'Not linked yet',
+                            expiresAt: session.expiresAt,
+                            verificationUrl,
+                        });
+                        embed.addFields({
+                            name: '🔐 Verify Now',
+                            value: 'Use the button below to open the verification portal and complete your NFT verification.',
+                            inline: false,
+                        });
+                        await interaction.editReply({ embeds: [embed, sessionEmbed], components, ephemeral: true });
+                        logger.info(`Status triggered verification session for user ${userId}`);
+                        return;
+                    }
+                } catch (sessionError) {
+                    logger.warn('Failed to generate verification session during status command:', sessionError.message);
+                }
+            }
 
             await interaction.editReply({ embeds: [embed] });
 

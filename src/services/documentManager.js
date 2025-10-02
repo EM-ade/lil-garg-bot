@@ -38,7 +38,17 @@ class DocumentManager {
    * Calculate file hash for duplicate detection
    */
   calculateFileHash(content) {
-    return crypto.createHash("sha256").update(content).digest("hex");
+    if (!content) {
+      logger.warn("calculateFileHash received empty or null content. Hashing an empty string.");
+      return crypto.createHash("sha256").update("").digest("hex"); // Hash an empty string
+    }
+    // Ensure content is a Buffer. If it's an ArrayBuffer, convert it.
+    const bufferContent = Buffer.isBuffer(content)
+      ? content
+      : content instanceof ArrayBuffer
+      ? Buffer.from(content)
+      : Buffer.from(content.toString());
+    return crypto.createHash("sha256").update(bufferContent).digest("hex");
   }
 
   /**
@@ -137,8 +147,22 @@ class DocumentManager {
         throw new Error("Extracted text content is empty.");
       }
 
+      logger.debug(`File buffer length for ${filename}: ${fileBuffer.length}`);
+      logger.debug(`Extracted content length for ${filename}: ${content.length}`);
+
       // Calculate file hash
-      const fileHash = this.calculateFileHash(fileBuffer);
+      let fileHash = this.calculateFileHash(fileBuffer);
+      logger.debug(`Calculated file hash for ${filename}: ${fileHash}`);
+
+      // Ensure fileHash is never null or empty string to avoid unique index issues
+      if (!fileHash || fileHash.trim().length === 0) {
+        logger.warn(`File hash for ${filename} was empty or null. Generating a UUID as fallback.`);
+        fileHash = crypto.randomUUID(); // Generate a unique ID as fallback
+      }
+
+      if (!fileHash) { // This check should now ideally never be true
+        throw new Error("Failed to generate a valid file hash even with fallback.");
+      }
 
       // Check if document already exists
       const existingDoc = await Document.findOne({ fileHash });
@@ -166,7 +190,9 @@ class DocumentManager {
         uploadedBy: metadata.uploadedBy,
         processingStatus: "pending",
       });
+      logger.debug(`Document object created with fileHash: ${document.fileHash}`);
 
+      logger.debug(`Saving document with fileHash: ${document.fileHash}`);
       await document.save();
 
       // Save the original file to disk
@@ -376,8 +402,8 @@ class DocumentManager {
       const pipeline = [
         {
           $search: {
-            index: "vector_index",
-            knn: {
+            index: "vector_index", // Ensure this is the correct index name
+            knnBeta: { // Changed from 'knn' to 'knnBeta' as per MongoDB Atlas Search documentation
               vector: queryEmbedding,
               path: "embeddings.vector",
               k: limit * 2, // Retrieve more candidates for filtering

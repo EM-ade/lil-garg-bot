@@ -19,7 +19,7 @@ class ButtonHandler {
 
             try {
                 const customId = interaction.customId;
-                
+
                 if (customId.startsWith('verify_')) {
                     await this.handleVerificationButtons(interaction);
                 } else if (customId.startsWith('pet_')) {
@@ -34,6 +34,8 @@ class ButtonHandler {
                     await this.handleWelcomeButtons(interaction);
                 } else if (customId.startsWith('feature_')) {
                     await this.handleFeatureButtons(interaction);
+                } else if (customId === 'check_roles') {
+                    await this.handleCheckRoles(interaction);
                 }
             } catch (error) {
                 logger.error('Error handling button interaction:', error);
@@ -829,6 +831,21 @@ class ButtonHandler {
             }
         } catch (error) {
             logger.error('Error handling feature button:', error);
+            await interaction.reply({
+                content: '❌ An error occurred while processing your request.',
+                ephemeral: true
+            });
+        }
+    }
+
+    async handleCheckRoles(interaction) {
+        try {
+            await interaction.reply({
+                content: 'This feature is coming soon!',
+                ephemeral: true
+            });
+        } catch (error) {
+            logger.error('Error handling check roles button:', error);
             await interaction.reply({
                 content: '❌ An error occurred while processing your request.',
                 ephemeral: true

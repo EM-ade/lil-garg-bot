@@ -18,8 +18,30 @@ async function loadCommands(client) {
             return;
         }
 
-        const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
+        const deprecatedCommandFiles = new Set([
+            'add-nft-contract.js',
+            'config-nft-role.js',
+            'setup-verification.js',
+            'remove-verification.js',
+            'set-verification-log-channel.js',
+        ]);
+
+        const commandFiles = fs
+            .readdirSync(commandsPath)
+            .filter((file) => file.endsWith('.js') && !deprecatedCommandFiles.has(file));
+
+        const skippedCommands = Array.from(deprecatedCommandFiles).filter((file) =>
+            fs.existsSync(path.join(commandsPath, file))
+        );
+
         console.log(`[${new Date().toISOString()}] [COMMAND_LOADER] Found ${commandFiles.length} command files.`);
+
+        if (skippedCommands.length > 0) {
+            console.log(
+                `[${new Date().toISOString()}] [COMMAND_LOADER] Skipped legacy commands: ${skippedCommands.join(', ')}`
+            );
+            logger.info(`Skipped legacy commands: ${skippedCommands.join(', ')}`);
+        }
 
         for (const file of commandFiles) {
             const filePath = path.join(commandsPath, file);

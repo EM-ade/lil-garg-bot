@@ -10,6 +10,14 @@ const requiredEnvVars = [
   "VERIFIED_CREATOR",
 ];
 
+// Optional environment variables
+const optionalEnvVars = [
+  "FRONTEND_URL",
+  "SUPABASE_URL",
+  "SUPABASE_SERVICE_ROLE_KEY",
+  "USE_SUPABASE",
+];
+
 function validateEnvironment() {
   console.log(
     `[${new Date().toISOString()}] Validating environment variables...`
@@ -54,7 +62,7 @@ const config = {
   // AI Configuration
   ai: {
     geminiApiKey: process.env.GEMINI_API_KEY,
-    model: process.env.GEMINI_MODEL || "gemini-1.5-flash",
+    model: process.env.GEMINI_MODEL || "gemini-1.0-pro",
     maxTokens: parseInt(process.env.MAX_TOKENS) || 1000,
     temperature: parseFloat(process.env.TEMPERATURE) || 0.7,
   },
@@ -81,6 +89,20 @@ const config = {
     nodeEnv: process.env.NODE_ENV || "development",
     logLevel: process.env.LOG_LEVEL || "info",
     debugMode: process.env.DEBUG_MODE === "true",
+  },
+
+  // Frontend Configuration
+  frontend: {
+    url: process.env.FRONTEND_URL || "http://localhost:5173",
+  },
+
+  supabase: {
+    url: process.env.SUPABASE_URL,
+    serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+  },
+
+  features: {
+    useSupabase: process.env.USE_SUPABASE === "true",
   },
 };
 

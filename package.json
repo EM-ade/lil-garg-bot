@@ -26,13 +26,20 @@
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
+    "@solana/spl-token": "^0.4.13",
     "@solana/web3.js": "^1.98.4",
+    "@supabase/supabase-js": "^2.45.4",
     "axios": "^1.11.0",
+    "body-parser": "^2.2.0",
+    "bs58": "^6.0.0",
+    "cors": "^2.8.5",
     "discord.js": "^14.21.0",
     "dotenv": "^17.2.1",
+    "express": "^5.1.0",
     "mammoth": "^1.10.0",
     "mongoose": "^8.17.1",
     "pdf-parse": "^1.1.1",
+    "tweetnacl": "^1.0.3",
     "winston": "^3.17.0"
   }
 }

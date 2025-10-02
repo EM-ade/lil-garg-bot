@@ -1,9 +1,22 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const { User } = require('../database/models');
 const NFTVerificationService = require('../services/nftVerification');
 const RoleManager = require('../utils/roleManager');
 const EmbedBuilderUtil = require('../utils/embedBuilder');
 const logger = require('../utils/logger');
+const {
+    verificationSessionService,
+    VerificationSessionError,
+} = require('../services/verificationSessionService');
+const {
+    isSupabaseEnabled,
+    getUserStore,
+} = require('../services/serviceFactory');
+const {
+    buildVerificationLink,
+    buildSessionEmbed,
+} = require('../utils/verificationSessionUi');
+
+const userStore = getUserStore();
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -35,7 +48,62 @@ module.exports = {
             }
 
             // Check if user is already verified with this wallet
-            const existingUser = await User.findOne({ discordId: userId });
+            if (isSupabaseEnabled()) {
+                try {
+                    const existingUser = await userStore.findUserByDiscordAndGuild(
+                        userId,
+                        guild.id
+                    );
+
+                    if (
+                        existingUser?.is_verified &&
+                        existingUser.wallet_address === walletAddress
+                    ) {
+                        return await interaction.editReply({
+                            content: '✅ You are already verified with this wallet address!',
+                        });
+                    }
+
+                    const session = await verificationSessionService.createSession({
+                        discordId: userId,
+                        guildId: guild.id,
+                        walletAddress,
+                        username,
+                    });
+
+                    const verificationUrl = buildVerificationLink(session.token);
+                    if (!verificationUrl) {
+                        throw new VerificationSessionError(
+                            'Verification portal URL is not configured. Please contact an administrator.',
+                            500
+                        );
+                    }
+
+                    const { embed, components } = buildSessionEmbed({
+                        walletAddress,
+                        expiresAt: session.expiresAt,
+                        verificationUrl,
+                    });
+
+                    return await interaction.editReply({
+                        embeds: [embed],
+                        components,
+                    });
+                } catch (error) {
+                    if (error instanceof VerificationSessionError) {
+                        return await interaction.editReply({
+                            content: `❌ ${error.message}`,
+                        });
+                    }
+
+                    logger.error('Error creating verification session:', error);
+                    return await interaction.editReply({
+                        content: '❌ Failed to create verification session. Please try again later.',
+                    });
+                }
+            }
+
+            const existingUser = await userStore.findOne({ discordId: userId });
             if (existingUser && existingUser.isVerified && existingUser.walletAddress === walletAddress) {
                 return await interaction.editReply({
                     content: '✅ You are already verified with this wallet address!',
@@ -47,7 +115,7 @@ module.exports = {
 
             if (!verificationResult.isVerified) {
                 // Update user record with failed verification
-                await User.findOneAndUpdate(
+                await userStore.findOneAndUpdate(
                     { discordId: userId },
                     {
                         discordId: userId,
@@ -73,7 +141,7 @@ module.exports = {
             }
 
             // Create or update user record
-            const user = await User.findOneAndUpdate(
+            const user = await userStore.findOneAndUpdate(
                 { discordId: userId },
                 {
                     discordId: userId,

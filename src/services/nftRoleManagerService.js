@@ -1,8 +1,66 @@
 const logger = require('../utils/logger');
-const User = require('../database/models/User');
-const BotConfig = require('../database/models/BotConfig'); // Import BotConfig model
-const NFTVerificationService = require('./nftVerification'); // Import NFTVerificationService
+const NFTVerificationService = require('./nftVerification');
+const {
+  isSupabaseEnabled,
+  getUserStore,
+  getBotConfigStore,
+  getGuildVerificationConfigStore,
+} = require('./serviceFactory');
 
+const userStore = getUserStore();
+const botConfigStore = getBotConfigStore();
+const guildVerificationConfigStore = getGuildVerificationConfigStore();
+
+async function fetchBotConfig(guildId) {
+  if (isSupabaseEnabled()) {
+    try {
+      return await botConfigStore.getBotConfigByGuildId(guildId);
+    } catch (error) {
+      logger.error(`Failed to fetch bot config from Supabase for guild ${guildId}: ${error.message}`);
+      return null;
+    }
+  }
+
+  return botConfigStore.findOne({ guildId });
+}
+
+function extractNftVerificationConfig(botConfig) {
+  if (!botConfig) return null;
+  if (botConfig.nftVerification) {
+    return botConfig.nftVerification;
+  }
+  if (botConfig.settings?.nftVerification) {
+    return botConfig.settings.nftVerification;
+  }
+  return null;
+}
+
+function mapSupabaseUserRecord(record) {
+  if (!record) return null;
+  if (!isSupabaseEnabled()) {
+    return record;
+  }
+
+  return {
+    discordId: record.discord_id,
+    guildId: record.guild_id,
+    walletAddress: record.wallet_address,
+  };
+}
+
+async function fetchVerifiedUsers() {
+  if (isSupabaseEnabled()) {
+    try {
+      const rows = await userStore.listVerifiedUsers();
+      return rows.map(mapSupabaseUserRecord);
+    } catch (error) {
+      logger.error(`Failed to fetch verified users from Supabase: ${error.message}`);
+      return [];
+    }
+  }
+
+  return userStore.find({ isVerified: true });
+}
 
 async function assignRolesBasedOnNfts(member, walletAddress) {
   if (!member || !walletAddress) {
@@ -13,26 +71,36 @@ async function assignRolesBasedOnNfts(member, walletAddress) {
   logger.info(`Assigning roles for user ${member.user.tag} with wallet ${walletAddress}`);
 
   try {
-    const botConfig = await BotConfig.findOne({ guildId: member.guild.id });
-    if (!botConfig || !botConfig.nftVerification || !botConfig.nftVerification.roleTiers || botConfig.nftVerification.roleTiers.length === 0) {
+    const contractRules = guildVerificationConfigStore
+      ? await guildVerificationConfigStore.listByGuild(member.guild.id)
+      : [];
+
+    const nftService = new NFTVerificationService();
+
+    if (contractRules && contractRules.length > 0) {
+      await applyContractRuleRoles({ member, walletAddress, contractRules, nftService });
+      return;
+    }
+
+    const botConfig = await fetchBotConfig(member.guild.id);
+    const nftVerificationConfig = extractNftVerificationConfig(botConfig);
+
+    if (
+      !nftVerificationConfig ||
+      !Array.isArray(nftVerificationConfig.roleTiers) ||
+      nftVerificationConfig.roleTiers.length === 0
+    ) {
       logger.warn(`No NFT role tiers configured for guild ${member.guild.name}. Skipping role assignment.`);
       return;
     }
 
-    // Instantiate NFTVerificationService to fetch NFT holdings
-    const nftService = new NFTVerificationService();
-
-    // Use NFTVerificationService to verify NFT ownership and get NFT information
     const verificationResult = await nftService.verifyNFTOwnership(walletAddress);
 
     const currentNFTCount = verificationResult.nftCount;
 
-    // Sort roles by requiredNfts in descending order to assign the highest eligible role first
-    const sortedRoles = [...botConfig.nftVerification.roleTiers].sort((a, b) => b.nftCount - a.nftCount);
+    const sortedRoles = [...nftVerificationConfig.roleTiers].sort((a, b) => b.nftCount - a.nftCount);
 
-    // Keep track of which roles were assigned from this managed system
     const rolesToKeep = new Set();
-    let highestRoleAssigned = null;
 
     for (const roleConfig of sortedRoles) {
       const role = member.guild.roles.cache.get(roleConfig.roleId);
@@ -43,7 +111,6 @@ async function assignRolesBasedOnNfts(member, walletAddress) {
       }
 
       if (currentNFTCount >= roleConfig.nftCount) {
-        // User qualifies for this role
         if (!member.roles.cache.has(role.id)) {
           try {
             await member.roles.add(role);
@@ -52,31 +119,74 @@ async function assignRolesBasedOnNfts(member, walletAddress) {
             logger.error(`Error assigning role '${role.name}' to ${member.user.tag}: ${error.message}`);
           }
         }
-        rolesToKeep.add(role.id); // Mark this role to be kept
-        if (!highestRoleAssigned) { // Assign the highest qualifying role
-            highestRoleAssigned = role.id;
-        }
-      } else {
-        // User does not qualify for this role, ensure it's removed if they have it
-        if (member.roles.cache.has(role.id)) {
-          try {
-            await member.roles.remove(role);
-            logger.info(`Removed role '${role.name}' from ${member.user.tag} as holdings (${currentNFTCount}) no longer meet requirement (${roleConfig.nftCount}).`);
-          } catch (error) {
-            logger.error(`Error removing role '${role.name}' from ${member.user.tag}: ${error.message}`);
-          }
+        rolesToKeep.add(role.id);
+      } else if (member.roles.cache.has(role.id)) {
+        try {
+          await member.roles.remove(role);
+          logger.info(
+            `Removed role '${role.name}' from ${member.user.tag} as holdings (${currentNFTCount}) no longer meet requirement (${roleConfig.nftCount}).`
+          );
+        } catch (error) {
+          logger.error(`Error removing role '${role.name}' from ${member.user.tag}: ${error.message}`);
         }
       }
     }
-
-    // Logic to ensure only the highest qualifying role (and roles that are not part of this managed system)
-    // are kept, if you want exclusive tiers.
-    // For now, the loop ensures lower roles are removed if higher ones are met and the `holdings` condition changes.
-    // If you desire strict exclusivity (e.g., only Whale OR Holder, never both), this needs more advanced logic.
-    // Current implementation allows a user to have both Holder and Whale if they meet both criteria based on how tiers are defined.
-
   } catch (error) {
     logger.error(`Error in assignRolesBasedOnNfts for guild ${member.guild.id}: ${error.message}`);
+  }
+}
+
+async function applyContractRuleRoles({ member, walletAddress, contractRules, nftService }) {
+  const contractAddresses = contractRules
+    .map((rule) => rule.contractAddress)
+    .filter(Boolean);
+
+  const verificationResult = await nftService.verifyNFTOwnership(walletAddress, {
+    contractAddresses,
+  });
+
+  const byContract = verificationResult.byContract || {};
+
+  for (const rule of contractRules) {
+    const normalizedContract = rule.contractAddress?.toLowerCase?.();
+    const ownedCount = normalizedContract ? byContract[normalizedContract] || 0 : 0;
+    const required = rule.requiredNftCount || 1;
+
+    let role = null;
+    if (rule.roleId) {
+      role = member.guild.roles.cache.get(rule.roleId);
+    }
+    if (!role && rule.roleName) {
+      role = member.guild.roles.cache.find((r) => r.name === rule.roleName);
+    }
+
+    if (!role) {
+      logger.warn(
+        `[verification] Role not found for rule ${rule.contractAddress} in guild ${member.guild.name}.`);
+      continue;
+    }
+
+    if (ownedCount >= required) {
+      if (!member.roles.cache.has(role.id)) {
+        try {
+          await member.roles.add(role);
+          logger.info(
+            `Assigned role '${role.name}' to ${member.user.tag} for holding ${ownedCount} NFTs of ${rule.contractAddress}.`
+          );
+        } catch (error) {
+          logger.error(`Error assigning role '${role.name}' to ${member.user.tag}: ${error.message}`);
+        }
+      }
+    } else if (member.roles.cache.has(role.id)) {
+      try {
+        await member.roles.remove(role);
+        logger.info(
+          `Removed role '${role.name}' from ${member.user.tag}; holdings (${ownedCount}) below requirement (${required}) for ${rule.contractAddress}.`
+        );
+      } catch (error) {
+        logger.error(`Error removing role '${role.name}' from ${member.user.tag}: ${error.message}`);
+      }
+    }
   }
 }
 
@@ -84,7 +194,7 @@ async function periodicRoleCheck(client) {
   logger.info('Performing periodic NFT role check for all verified users...');
 
   try {
-    const verifiedUsers = await User.find({ isVerified: true });
+    const verifiedUsers = await fetchVerifiedUsers();
 
     if (verifiedUsers.length === 0) {
       logger.info('No verified users found for periodic role check.');

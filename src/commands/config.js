@@ -117,6 +117,11 @@ module.exports = {
         await botConfig.save();
       }
 
+      if (!botConfig.guildName) {
+        botConfig.guildName = interaction.guild.name;
+        await botConfig.save();
+      }
+
       switch (subcommand) {
         case "channels":
           await this.handleChannelConfig(interaction, botConfig);

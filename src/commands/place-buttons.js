@@ -7,78 +7,96 @@ module.exports = {
     .setName("place-buttons")
     .setDescription("Place feature buttons in specific channels")
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
-    .addSubcommand(subcommand =>
+    .addSubcommand((subcommand) =>
       subcommand
         .setName("pet-system")
         .setDescription("Place pet system buttons in a channel")
-        .addChannelOption(option =>
+        .addChannelOption((option) =>
           option
             .setName("channel")
             .setDescription("Channel to place pet system buttons")
             .setRequired(true)
-            .addChannelTypes(ChannelType.GuildText)
-        )
+            .addChannelTypes(ChannelType.GuildText),
+        ),
     )
-    .addSubcommand(subcommand =>
+    .addSubcommand((subcommand) =>
+      subcommand
+        .setName("verification-flow")
+        .setDescription("Post the Lil Gargs verification flow message in a channel")
+        .addChannelOption((option) =>
+          option
+            .setName("channel")
+            .setDescription("Channel to post the verification message")
+            .setRequired(true)
+            .addChannelTypes(ChannelType.GuildText),
+        )
+        .addBooleanOption((option) =>
+          option
+            .setName("sticky")
+            .setDescription("Save this message so the bot can recreate it if removed")
+            .setRequired(false),
+        ),
+    )
+    .addSubcommand((subcommand) =>
       subcommand
         .setName("nft-verification")
         .setDescription("Place NFT verification buttons in a channel")
-        .addChannelOption(option =>
+        .addChannelOption((option) =>
           option
             .setName("channel")
             .setDescription("Channel to place NFT verification buttons")
             .setRequired(true)
-            .addChannelTypes(ChannelType.GuildText)
-        )
+            .addChannelTypes(ChannelType.GuildText),
+        ),
     )
-    .addSubcommand(subcommand =>
+    .addSubcommand((subcommand) =>
       subcommand
         .setName("battle-system")
         .setDescription("Place battle system buttons in a channel")
-        .addChannelOption(option =>
+        .addChannelOption((option) =>
           option
             .setName("channel")
             .setDescription("Channel to place battle system buttons")
             .setRequired(true)
-            .addChannelTypes(ChannelType.GuildText)
-        )
+            .addChannelTypes(ChannelType.GuildText),
+        ),
     )
-    .addSubcommand(subcommand =>
+    .addSubcommand((subcommand) =>
       subcommand
         .setName("ticket-system")
         .setDescription("Place ticket system buttons in a channel")
-        .addChannelOption(option =>
+        .addChannelOption((option) =>
           option
             .setName("channel")
             .setDescription("Channel to place ticket system buttons")
             .setRequired(true)
-            .addChannelTypes(ChannelType.GuildText)
-        )
+            .addChannelTypes(ChannelType.GuildText),
+        ),
     )
-    .addSubcommand(subcommand =>
+    .addSubcommand((subcommand) =>
       subcommand
         .setName("feature-hub")
         .setDescription("Place all feature buttons in a channel")
-        .addChannelOption(option =>
+        .addChannelOption((option) =>
           option
             .setName("channel")
             .setDescription("Channel to place all feature buttons")
             .setRequired(true)
-            .addChannelTypes(ChannelType.GuildText)
-        )
+            .addChannelTypes(ChannelType.GuildText),
+        ),
     )
-    .addSubcommand(subcommand =>
+    .addSubcommand((subcommand) =>
       subcommand
         .setName("remove")
         .setDescription("Remove feature buttons from a channel")
-        .addChannelOption(option =>
+        .addChannelOption((option) =>
           option
             .setName("channel")
             .setDescription("Channel to remove buttons from")
             .setRequired(true)
-            .addChannelTypes(ChannelType.GuildText)
+            .addChannelTypes(ChannelType.GuildText),
         )
-        .addStringOption(option =>
+        .addStringOption((option) =>
           option
             .setName("feature")
             .setDescription("Which feature buttons to remove")
@@ -88,9 +106,9 @@ module.exports = {
               { name: "Pet System", value: "pet" },
               { name: "NFT Verification", value: "nft" },
               { name: "Battle System", value: "battle" },
-              { name: "Ticket System", value: "ticket" }
-            )
-        )
+              { name: "Ticket System", value: "ticket" },
+            ),
+        ),
     ),
 
   async execute(interaction) {
@@ -120,6 +138,9 @@ module.exports = {
           break;
         case "ticket-system":
           await this.handleTicketSystemButtons(interaction, botConfig);
+          break;
+        case "verification-flow":
+          await this.handleVerificationFlow(interaction, botConfig);
           break;
         case "feature-hub":
           await this.handleFeatureHubButtons(interaction, botConfig);
@@ -539,8 +560,65 @@ module.exports = {
       logger.error("Error removing buttons:", error);
       await interaction.reply({
         content: "❌ Failed to remove buttons. Please try again.",
-        ephemeral: true
+        ephemeral: true,
       });
     }
-  }
+  },
+
+  async handleVerificationFlow(interaction, botConfig) {
+    const channel = interaction.options.getChannel("channel");
+    const sticky = interaction.options.getBoolean("sticky") ?? false;
+
+    try {
+      const embed = new EmbedBuilder()
+        .setColor("#8B008B")
+        .setTitle("🪄 Lil Gargs NFT Verification")
+        .setDescription("Click the button below to verify your Lil Gargs NFT ownership and claim your holder role.")
+        .addFields(
+          {
+            name: "📋 How it works",
+            value:
+              '1. Click "Verify Now"\n2. Enter your Solana wallet address\n3. We check your Lil Gargs holding\n4. Roles update automatically',
+          },
+          {
+            name: "💡 Tip",
+            value: "Verification happens instantly inside Discord—no external portal required.",
+          },
+        )
+        .setFooter({ text: "Need help? Contact an admin." })
+        .setTimestamp();
+
+      const verifyButton = new ButtonBuilder()
+        .setCustomId("nft_verify_button")
+        .setLabel("Verify Now")
+        .setStyle(ButtonStyle.Primary)
+        .setEmoji("✅");
+
+      const actionRow = new ActionRowBuilder().addComponents(verifyButton);
+
+      const message = await channel.send({
+        embeds: [embed],
+        components: [actionRow],
+      });
+
+      botConfig.nftVerification = {
+        ...botConfig.nftVerification,
+        enabled: true,
+        buttonChannelId: channel.id,
+        stickyMessageId: sticky ? message.id : null,
+      };
+      await botConfig.save();
+
+      await interaction.reply({
+        content: `✅ Verification message posted in ${channel}.`,
+        ephemeral: true,
+      });
+    } catch (error) {
+      logger.error("Error posting verification flow message:", error);
+      await interaction.reply({
+        content: "❌ Failed to post the verification message. Please try again.",
+        ephemeral: true,
+      });
+    }
+  },
 };

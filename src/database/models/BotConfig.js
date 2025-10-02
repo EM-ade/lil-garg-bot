@@ -39,6 +39,10 @@ const botConfigSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    verificationMessageId: {
+      type: String,
+      default: null,
+    },
     aiChatChannelIds: [
       {
         type: String,

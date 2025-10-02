@@ -1,226 +1,165 @@
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const { User } = require('../database/models');
-const NFTVerificationService = require('../services/nftVerification');
-const RoleManager = require('../utils/roleManager');
-const EmbedBuilderUtil = require('../utils/embedBuilder');
-const logger = require('../utils/logger');
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const config = require('../config/environment');
+const {
+  verificationSessionService,
+  VerificationSessionError,
+} = require('../services/verificationSessionService');
+const { registerInteraction } = require('../services/sessionInteractionRegistry');
+
+function buildVerificationLink(token) {
+  const baseUrl = config.frontend?.url?.replace(/\/$/, '') || '';
+  if (!baseUrl) {
+    return null;
+  }
+  return `${baseUrl}/session/${encodeURIComponent(token)}`;
+}
+
+function buildSupabaseSuccessEmbed({ walletAddress, expiresAt, verificationUrl }) {
+  const embed = new EmbedBuilder()
+    .setColor('#8B008B')
+    .setTitle('🔐 Continue NFT Verification')
+    .setDescription(
+      'We created a secure verification session for your wallet. Click the button below to finish verification on the Lil Gargs portal.'
+    )
+    .addFields(
+      {
+        name: 'Wallet Address',
+        value: `\`${walletAddress}\``,
+        inline: false,
+      },
+      {
+        name: 'Session Expires',
+        value: expiresAt
+          ? new Date(expiresAt).toLocaleString()
+          : '10 minutes',
+        inline: true,
+      },
+      {
+        name: 'Next Steps',
+        value:
+          '1. Open the verification portal\n2. Connect your wallet\n3. Sign the verification message\n4. Return to Discord – roles update automatically',
+        inline: false,
+      }
+    )
+    .setTimestamp();
+
+  const button = new ButtonBuilder()
+    .setLabel('Open Verification Portal')
+    .setStyle(ButtonStyle.Link)
+    .setURL(verificationUrl);
+
+  const row = new ActionRowBuilder().addComponents(button);
+
+  return { embed, components: [row] };
+}
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('verify-nft')
-        .setDescription('Verify your Lil Gargs NFT ownership')
-        .addStringOption(option =>
-            option.setName('wallet_address')
-                .setDescription('Your Solana wallet address')
-                .setRequired(true)),
+        .setDescription('Start the NFT verification process for Lil Gargs'),
 
     async execute(interaction) {
-        console.log(`[${new Date().toISOString()}] [VERIFY-NFT] Command execution started`);
-        console.log(`[${new Date().toISOString()}] [VERIFY-NFT] Interaction ID: ${interaction.id}`);
-        console.log(`[${new Date().toISOString()}] [VERIFY-NFT] User: ${interaction.user.username} (${interaction.user.id})`);
-        console.log(`[${new Date().toISOString()}] [VERIFY-NFT] Guild: ${interaction.guild.name} (${interaction.guild.id})`);
-
-        // Check if the interaction has already been replied to or deferred
-        if (!interaction.replied && !interaction.deferred) {
-            console.log(`[${new Date().toISOString()}] [VERIFY-NFT] Deferring reply...`);
-            await interaction.deferReply({ ephemeral: true });
-            console.log(`[${new Date().toISOString()}] [VERIFY-NFT] Reply deferred successfully`);
-        } else {
-            console.log(`[${new Date().toISOString()}] [VERIFY-NFT] Interaction already replied to or deferred`);
-        }
-
         try {
-            // Log all interaction options for debugging
-            console.log(`[${new Date().toISOString()}] [VERIFY-NFT] Interaction options:`, interaction.options.data);
-            console.log(`[${new Date().toISOString()}] [VERIFY-NFT] Interaction options type:`, typeof interaction.options);
+            // Immediately defer the reply to prevent interaction timeout
+            await interaction.deferReply({ ephemeral: true });
 
-            // Try different ways to get the wallet address
-            let walletAddress = null;
-            if (interaction.options.getString) {
-                walletAddress = interaction.options.getString('wallet_address');
-                console.log(`[${new Date().toISOString()}] [VERIFY-NFT] Wallet address from getString: ${walletAddress}`);
-            }
-
-            if (!walletAddress && interaction.options.data) {
-                const walletOption = interaction.options.data.find(option => option.name === 'wallet_address');
-                if (walletOption) {
-                    walletAddress = walletOption.value;
-                    console.log(`[${new Date().toISOString()}] [VERIFY-NFT] Wallet address from data: ${walletAddress}`);
-                }
-            }
-
-            console.log(`[${new Date().toISOString()}] [VERIFY-NFT] Final wallet address: ${walletAddress}`);
-
-            // Check if wallet address is null or empty
-            if (!walletAddress) {
-                console.log(`[${new Date().toISOString()}] [VERIFY-NFT] Wallet address is null or empty`);
-                return await interaction.editReply({
-                    content: '❌ No wallet address provided. Please provide a valid Solana wallet address.',
-                });
-            }
-
-            const userId = interaction.user.id;
-            const username = interaction.user.username;
-            const guild = interaction.guild;
-
-            // Initialize services
-            console.log(`[${new Date().toISOString()}] [VERIFY-NFT] Initializing services...`);
-            const nftService = new NFTVerificationService();
-            const roleManager = new RoleManager(interaction.client);
-            console.log(`[${new Date().toISOString()}] [VERIFY-NFT] Services initialized`);
-
-            // Validate wallet address
-            console.log(`[${new Date().toISOString()}] [VERIFY-NFT] Validating wallet address...`);
-            if (!nftService.isValidSolanaAddress(walletAddress)) {
-                console.log(`[${new Date().toISOString()}] [VERIFY-NFT] Invalid wallet address: ${walletAddress}`);
-                return await interaction.editReply({
-                    content: '❌ Invalid Solana wallet address. Please provide a valid wallet address.',
-                });
-            }
-            console.log(`[${new Date().toISOString()}] [VERIFY-NFT] Wallet address is valid`);
-
-            // Check if user is already verified with this wallet
-            console.log(`[${new Date().toISOString()}] [VERIFY-NFT] Checking if user is already verified...`);
-            const existingUser = await User.findOne({ discordId: userId });
-            if (existingUser && existingUser.isVerified && existingUser.walletAddress === walletAddress) {
-                console.log(`[${new Date().toISOString()}] [VERIFY-NFT] User is already verified with this wallet`);
-                return await interaction.editReply({
-                    content: '✅ You are already verified with this wallet address!',
-                });
-            }
-            console.log(`[${new Date().toISOString()}] [VERIFY-NFT] User is not verified or using a different wallet`);
-
-            // Verify NFT ownership
-            console.log(`[${new Date().toISOString()}] [VERIFY-NFT] Verifying NFT ownership...`);
-            const verificationResult = await nftService.verifyNFTOwnership(walletAddress);
-            console.log(`[${new Date().toISOString()}] [VERIFY-NFT] NFT verification result:`, verificationResult);
-
-            if (!verificationResult.isVerified) {
-                console.log(`[${new Date().toISOString()}] [VERIFY-NFT] NFT verification failed`);
-                // Update user record with failed verification
-                await User.findOneAndUpdate(
-                    { discordId: userId },
-                    {
-                        discordId: userId,
-                        username: username,
-                        walletAddress: walletAddress,
-                        isVerified: false,
-                        lastVerificationCheck: new Date(),
-                        $push: {
-                            verificationHistory: {
-                                walletAddress: walletAddress,
-                                verifiedAt: new Date(),
-                                nftCount: 0,
-                                status: 'failed'
-                            }
-                        }
-                    },
-                    { upsert: true, new: true }
-                );
-
-                const embed = EmbedBuilderUtil.createVerificationEmbed(walletAddress, 0, 'failed');
-
-                return await interaction.editReply({ embeds: [embed] });
-            }
-
-            console.log(`[${new Date().toISOString()}] [VERIFY-NFT] NFT verification successful`);
-            // Create or update user record
-            const user = await User.findOneAndUpdate(
-                { discordId: userId },
-                {
-                    discordId: userId,
-                    username: username,
-                    walletAddress: walletAddress,
-                    isVerified: true,
-                    nftTokens: verificationResult.nfts.map(nft => ({
-                        mint: nft.mint,
-                        name: nft.name,
-                        image: nft.image,
-                        verifiedAt: new Date()
-                    })),
-                    lastVerificationCheck: new Date(),
-                    $push: {
-                        verificationHistory: {
-                            walletAddress: walletAddress,
-                            verifiedAt: new Date(),
-                            nftCount: verificationResult.nftCount,
-                            status: 'success'
-                        }
-                    }
-                },
-                { upsert: true, new: true }
-            );
-
-            // Assign verified role
-            try {
-                console.log(`[${new Date().toISOString()}] [VERIFY-NFT] Assigning verified role...`);
-                await roleManager.assignVerifiedRole(guild, userId);
-                console.log(`[${new Date().toISOString()}] [VERIFY-NFT] Verified role assigned successfully`);
-            } catch (roleError) {
-                logger.error('Error assigning role:', roleError);
-                console.log(`[${new Date().toISOString()}] [VERIFY-NFT] Error assigning role: ${roleError.message}`);
-                // Continue with verification even if role assignment fails
-            }
-
-            // Create success embed
+            // Create verification embed with image
             const embed = new EmbedBuilder()
-                .setColor('#00ff00')
-                .setTitle('✅ Verification Successful!')
-                .setDescription(`You have been verified as a Lil Gargs holder!`)
+                .setColor('#8B008B')
+                .setTitle('🪄 Lil Gargs NFT Verification')
+                .setDescription('Click the button below to verify your Lil Gargs NFT ownership and get your special role!')
+                .setImage('https://bafybeif32gaqsngxdaply6x5m5htxpuuxw2dljvdv6iokek3xod7lmus24.ipfs.w3s.link/') // Your NFT image URL
                 .addFields(
-                    { name: 'Wallet Address', value: `\`${walletAddress}\``, inline: false },
-                    { name: 'NFTs Found', value: verificationResult.nftCount.toString(), inline: true },
-                    { name: 'Status', value: 'Verified ✅', inline: true }
+                    {
+                        name: '📋 How it works',
+                        value: '1. Click "Verify Now"\n2. Approve the portal session\n3. Connect your wallet & sign\n4. Receive your exclusive role!',
+                        inline: false
+                    }
                 )
+                .setFooter({ text: 'Lil Gargs NFT Verification System' })
                 .setTimestamp();
 
-            // Add NFT details if available
-            if (verificationResult.nfts.length > 0) {
-                const nftList = verificationResult.nfts
-                    .slice(0, 5) // Show max 5 NFTs
-                    .map(nft => `• ${nft.name || 'Unknown Lil Garg'}`)
-                    .join('\n');
+            // Create verify button
+            const verifyButton = new ButtonBuilder()
+                .setCustomId('nft_verify_button')
+                .setLabel('Verify Now')
+                .setStyle(ButtonStyle.Primary)
+                .setEmoji('✅');
 
-                embed.addFields({
-                    name: 'Your Lil Gargs NFTs',
-                    value: nftList + (verificationResult.nfts.length > 5 ? `\n... and ${verificationResult.nfts.length - 5} more` : ''),
-                    inline: false
-                });
-            }
+            const buttonRow = new ActionRowBuilder().addComponents(verifyButton);
 
-            // Add thumbnail if available
-            if (verificationResult.nfts[0]?.image) {
-                embed.setThumbnail(verificationResult.nfts[0].image);
-            }
-
-            console.log(`[${new Date().toISOString()}] [VERIFY-NFT] Sending success response...`);
-            await interaction.editReply({ embeds: [embed] });
-            console.log(`[${new Date().toISOString()}] [VERIFY-NFT] Success response sent`);
-
-            // Log successful verification
-            logger.info(`User ${username} (${userId}) verified with wallet ${walletAddress} - ${verificationResult.nftCount} NFTs found`);
+            // Edit the deferred reply with the embed and button
+            await interaction.editReply({
+                embeds: [embed],
+                components: [buttonRow]
+            });
 
         } catch (error) {
-            logger.error('Error in verify command:', error);
-            console.log(`[${new Date().toISOString()}] [VERIFY-NFT] Error in verify command: ${error.message}`);
-            console.log(`[${new Date().toISOString()}] [VERIFY-NFT] Error stack: ${error.stack}`);
-
-            const errorEmbed = new EmbedBuilder()
-                .setColor('#ff0000')
-                .setTitle('❌ Verification Error')
-                .setDescription('An error occurred during verification. Please try again later.')
-                .addFields(
-                    { name: 'Error', value: error.message || 'Unknown error', inline: false }
-                )
-                .setTimestamp();
-
+            console.error('Error in verify-nft command:', error);
+            // If we can't edit the reply, the interaction might already be completed
             try {
-                console.log(`[${new Date().toISOString()}] [VERIFY-NFT] Sending error response...`);
-                await interaction.editReply({ embeds: [errorEmbed] });
-                console.log(`[${new Date().toISOString()}] [VERIFY-NFT] Error response sent`);
-            } catch (replyError) {
-                console.log(`[${new Date().toISOString()}] [VERIFY-NFT] Failed to send error response: ${replyError.message}`);
+                await interaction.followUp({
+                    content: '❌ An error occurred while starting the verification process. Please try again later.',
+                    ephemeral: true,
+                });
+            } catch (followUpError) {
+                console.error('Failed to send follow-up message:', followUpError);
+              }
+        }
+    },
+
+    // Handle button interaction
+    async handleButtonInteraction(interaction) {
+        try {
+            await interaction.deferReply({ ephemeral: true });
+
+            const session = await verificationSessionService.createSession({
+                discordId: interaction.user.id,
+                guildId: interaction.guildId,
+                username: interaction.user.username,
+            });
+
+            registerInteraction(session.token, {
+                interactionId: interaction.id,
+                interactionToken: interaction.token,
+                channelId: interaction.channelId,
+                userId: interaction.user.id,
+                guildId: interaction.guildId,
+            });
+
+            const verificationUrl = buildVerificationLink(session.token);
+            if (!verificationUrl) {
+                throw new VerificationSessionError(
+                    'Verification portal URL is not configured. Please contact an administrator.',
+                    500
+                );
             }
+
+            const { embed, components } = buildSupabaseSuccessEmbed({
+                walletAddress: 'Connect in portal',
+                expiresAt: session.expiresAt,
+                verificationUrl,
+            });
+
+            await interaction.editReply({
+                embeds: [embed],
+                components,
+                ephemeral: true,
+            });
+        } catch (error) {
+            if (error instanceof VerificationSessionError) {
+                await interaction.editReply({
+                    content: `❌ ${error.message}`,
+                    ephemeral: true,
+                });
+                return;
+            }
+
+            console.error('Error creating verification session from interactive button:', error);
+            await interaction.editReply({
+                content: '❌ Failed to start verification session. Please try again later.',
+                ephemeral: true,
+            });
         }
     },
 };

@@ -5,9 +5,27 @@ require("dotenv").config();
 
 const commands = [];
 const commandsPath = path.join(__dirname, "commands");
+const deprecatedCommandFiles = new Set([
+  "add-nft-contract.js",
+  "config-nft-role.js",
+  "setup-verification.js",
+  "remove-verification.js",
+  "set-verification-log-channel.js",
+]);
+
 const commandFiles = fs
   .readdirSync(commandsPath)
-  .filter((file) => file.endsWith(".js"));
+  .filter((file) => file.endsWith(".js") && !deprecatedCommandFiles.has(file));
+
+const skippedCommands = Array.from(deprecatedCommandFiles).filter((file) =>
+  fs.existsSync(path.join(commandsPath, file))
+);
+
+if (skippedCommands.length > 0) {
+  console.log(
+    `Skipping legacy verification commands: ${skippedCommands.join(', ')}`
+  );
+}
 
 // Load all command data
 for (const file of commandFiles) {

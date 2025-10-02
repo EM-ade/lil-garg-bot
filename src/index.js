@@ -1,77 +1,45 @@
 const { Client, GatewayIntentBits, Collection } = require("discord.js");
 const mongoose = require("mongoose");
 const winston = require("winston");
+const express = require("express");
 require("dotenv").config();
 
 console.log(`[${new Date().toISOString()}] Bot starting...`);
 
-// Import modules with detailed logging
-// Import modules with detailed logging
-let loadCommands, setupDatabase, logger, ErrorHandler, rateLimiter, chatManager, AIChatbot, SecurityManager, ButtonHandler, CleanupManager, NFTMonitoringService, PetMaintenanceService, periodicRoleCheck;
+// Import modules
+let config,
+  loadCommands,
+  setupDatabase,
+  logger,
+  ErrorHandler,
+  rateLimiter,
+  chatManager,
+  AIChatbot,
+  SecurityManager,
+  ButtonHandler,
+  CleanupManager,
+  NFTMonitoringService,
+  PetMaintenanceService,
+  periodicRoleCheck;
 
 try {
-    console.log(`[${new Date().toISOString()}] [IMPORT] Loading environment config...`);
-    const config = require("./config/environment");
-    console.log(`[${new Date().toISOString()}] [IMPORT] Environment config loaded successfully.`);
-
-    console.log(`[${new Date().toISOString()}] [IMPORT] Loading command loader...`);
+    config = require("./config/environment");
     ({ loadCommands } = require("./utils/commandLoader"));
-    console.log(`[${new Date().toISOString()}] [IMPORT] Command loader loaded successfully.`);
-
-    console.log(`[${new Date().toISOString()}] [IMPORT] Loading database connection...`);
     setupDatabase = require("./database/connection");
-    console.log(`[${new Date().toISOString()}] [IMPORT] Database connection loaded successfully.`);
-
-    console.log(`[${new Date().toISOString()}] [IMPORT] Loading logger...`);
     logger = require("./utils/logger");
-    console.log(`[${new Date().toISOString()}] [IMPORT] Logger loaded successfully.`);
-
-    console.log(`[${new Date().toISOString()}] [IMPORT] Loading error handler...`);
     ErrorHandler = require("./utils/errorHandler");
-    console.log(`[${new Date().toISOString()}] [IMPORT] Error handler loaded successfully.`);
-
-    console.log(`[${new Date().toISOString()}] [IMPORT] Loading rate limiter...`);
     rateLimiter = require("./utils/rateLimiter");
-    console.log(`[${new Date().toISOString()}] [IMPORT] Rate limiter loaded successfully.`);
-
-    console.log(`[${new Date().toISOString()}] [IMPORT] Loading chat manager...`);
     chatManager = require("./services/chatManager");
-    console.log(`[${new Date().toISOString()}] [IMPORT] Chat manager loaded successfully.`);
-
-    console.log(`[${new Date().toISOString()}] [IMPORT] Loading AI chatbot...`);
     AIChatbot = require("./services/aiChatbot");
-    console.log(`[${new Date().toISOString()}] [IMPORT] AI chatbot loaded successfully.`);
-
-    console.log(`[${new Date().toISOString()}] [IMPORT] Loading security manager...`);
     SecurityManager = require("./utils/securityManager");
-    console.log(`[${new Date().toISOString()}] [IMPORT] Security manager loaded successfully.`);
-
-    console.log(`[${new Date().toISOString()}] [IMPORT] Loading button handler...`);
     ButtonHandler = require("./utils/buttonHandler");
-    console.log(`[${new Date().toISOString()}] [IMPORT] Button handler loaded successfully.`);
-
-    console.log(`[${new Date().toISOString()}] [IMPORT] Loading cleanup manager...`);
     CleanupManager = require("./utils/cleanupManager");
-    console.log(`[${new Date().toISOString()}] [IMPORT] Cleanup manager loaded successfully.`);
-
-    console.log(`[${new Date().toISOString()}] [IMPORT] Loading NFT monitoring service...`);
     NFTMonitoringService = require("./services/nftMonitoringService");
-    console.log(`[${new Date().toISOString()}] [IMPORT] NFT monitoring service loaded successfully.`);
-
-    console.log(`[${new Date().toISOString()}] [IMPORT] Loading pet maintenance service...`);
     PetMaintenanceService = require("./services/petMaintenanceService");
-    console.log(`[${new Date().toISOString()}] [IMPORT] Pet maintenance service loaded successfully.`);
-
-    console.log(`[${new Date().toISOString()}] [IMPORT] Loading NFT role manager service...`);
     ({ periodicRoleCheck } = require("./services/nftRoleManagerService"));
-    console.log(`[${new Date().toISOString()}] [IMPORT] NFT role manager service loaded successfully.`);
-
-    console.log(`[${new Date().toISOString()}] [IMPORT] All modules loaded successfully.`);
 
     // Setup global error handlers
-    console.log(`[${new Date().toISOString()}] [IMPORT] Setting up global error handlers...`);
     ErrorHandler.setupGlobalErrorHandlers();
-    console.log(`[${new Date().toISOString()}] [IMPORT] Global error handlers set up successfully.`);
 } catch (importError) {
     const errorTime = new Date();
     console.error(`[${errorTime.toISOString()}] [IMPORT] Critical error during module imports:`, importError);
@@ -176,6 +144,9 @@ class LilGargsBot {
     this.client.once("ready", async () => {
       logger.info(`Bot is ready! Logged in as ${this.client.user.tag}`);
 
+      // Set Discord client for API routes
+      setDiscordClient(this.client);
+
       // Start automated services
       try {
         // Start NFT monitoring service
@@ -190,19 +161,18 @@ class LilGargsBot {
         this.cleanupManager.setupCleanupJobs();
         logger.info("Cleanup manager started successfully");
 
-        // Schedule periodic NFT role checks (e.g., every 30 minutes)
-        setInterval(() => periodicRoleCheck(this.client), 30 * 60 * 1000); // 30 minutes
-        logger.info("Scheduled periodic NFT role checks.");
+        // Schedule periodic NFT role checks (e.e.g., every 30 minutes)
+        const periodicIntervalMs = 5 * 60 * 1000; // 5 minutes (testing)
+        setInterval(() => periodicRoleCheck(this.client), periodicIntervalMs);
+        logger.info(`Scheduled periodic NFT role checks every ${periodicIntervalMs / 1000}s (testing).`);
       } catch (error) {
-        logger.error("Error starting automated services:", error);
+        logger.error('Failed to start automated services:', error)
       }
-    });
+    })
 
     this.client.on("interactionCreate", async (interaction) => {
       if (interaction.isChatInputCommand()) {
-        const command = this.client.commands.get(interaction.commandName);
-        if (!command) return;
-
+        const command = this.client.commands.get(interaction.commandName)
         try {
           // Apply rate limiting
           const canExecute = await rateLimiter.applyRateLimit(
@@ -230,7 +200,7 @@ class LilGargsBot {
         // Handle modal submissions
         await this.handleModalSubmit(interaction);
       } else if (interaction.isButton()) {
-        // Handle button interactions specifically for the welcome_nft_verify button
+        // Handle button interactions
         if (interaction.customId === "welcome_nft_verify") {
           // Instead of opening a modal, we instruct the user to use the slash command
           await interaction.reply({
@@ -238,6 +208,17 @@ class LilGargsBot {
               "Please use the `/verify-nft` command directly to verify your wallet.",
             ephemeral: true,
           });
+        } else if (interaction.customId === "nft_verify_button") {
+          // Handle NFT verification button
+          const verifyNftCommand = this.client.commands.get('verify-nft');
+          if (verifyNftCommand && verifyNftCommand.handleButtonInteraction) {
+            await verifyNftCommand.handleButtonInteraction(interaction);
+          } else {
+            await interaction.reply({
+              content: "❌ Verification system not available. Please try again later.",
+              ephemeral: true,
+            });
+          }
         }
         // You can add more button handlers here if needed
         // else if (interaction.customId === 'another_button') { /* ... */ }
@@ -245,33 +226,43 @@ class LilGargsBot {
     });
 
     this.client.on("messageCreate", async (message) => {
-      if (message.author.bot || !message.mentions.has(this.client.user)) {
+      if (message.author.bot) {
+        return;
+      }
+
+      const mentionRegex = new RegExp(`<@!?${this.client.user.id}>`);
+      const hasDirectMention = mentionRegex.test(message.content);
+      const isBroadcastMention = message.mentions.everyone;
+
+      const isReply = message.reference && message.reference.messageId;
+      let repliedMessage;
+      if (isReply) {
+        try {
+          repliedMessage = await message.channel.messages.fetch(
+            message.reference.messageId
+          );
+        } catch (fetchError) {
+          logger.warn(
+            `Failed to fetch replied message ${message.reference?.messageId}: ${fetchError.message}`
+          );
+        }
+      }
+      const isBotReply = repliedMessage && repliedMessage.author.id === this.client.user.id;
+
+      if (!hasDirectMention && !isBotReply) {
+        return;
+      }
+
+      if (isBroadcastMention && !isBotReply) {
         return;
       }
 
       try {
-        // Show the bot is typing
-        await message.channel.sendTyping();
-
-        // Extract the question from the message, removing the bot mention
-        const question = message.content.replace(/<@!?\d+>/, "").trim();
-
-        if (question.length < 3) {
-          await message.reply("Please ask a more detailed question.");
-          return;
-        }
-
         // Initialize AI chatbot
         const aiChatbot = new AIChatbot();
-        const result = await aiChatbot.generateGeneralResponse(question);
-
-        // Send the response
-        await message.reply(result.response);
+        await aiChatbot.processAiChatMention(message, this.client);
       } catch (error) {
         logger.error("Error handling mentioned message:", error);
-        await message.reply(
-          "Sorry, I had trouble coming up with a response. Please try again."
-        );
       }
     });
 
@@ -293,8 +284,18 @@ class LilGargsBot {
     try {
       const customId = interaction.customId;
 
-      // The 'verify_wallet_modal' handling is now removed as verification is done via /verify-nft command
-      if (customId === "ticket_create_modal") {
+      // Handle NFT verification modal
+      if (customId === "nft_verify_modal") {
+        const verifyNftCommand = this.client.commands.get('verify-nft');
+        if (verifyNftCommand && verifyNftCommand.handleModalSubmit) {
+          await verifyNftCommand.handleModalSubmit(interaction);
+        } else {
+          await interaction.reply({
+            content: "❌ NFT verification handler not found.",
+            ephemeral: true,
+          });
+        }
+      } else if (customId === "ticket_create_modal") {
         await this.handleTicketCreateModal(interaction);
       } else if (customId === "pet_adopt_modal") {
         await this.handlePetAdoptModal(interaction);
@@ -308,8 +309,8 @@ class LilGargsBot {
     } catch (error) {
       logger.error("Error handling modal submit:", error);
       await interaction.reply({
-        content: "❌ An error occurred while processing your submission.",
-        ephemeral: true,
+          content: "❌ An error occurred while processing your submission.",
+          ephemeral: true,
       });
     }
   }
@@ -630,6 +631,60 @@ Welcome to the family! 🎊`;
 }
 
 // Start the bot
+// Set up Express server for API routes
+const app = express();
+const cors = require('cors');
+
+const corsFromEnv = (process.env.CORS_ALLOWED_ORIGINS || '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+const allowedOrigins = Array.from(
+  new Set([
+    ...corsFromEnv,
+    config?.frontend?.url || 'http://localhost:5173',
+    'http://localhost:5173',
+  ]),
+);
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error(`Not allowed by CORS: ${origin}`));
+  },
+  credentials: true,
+};
+
+app.use(cors(corsOptions));
+app.use(express.json());
+
+// Mount the API routes
+const verificationCallbackRouter = require("./api/verificationCallback");
+const verifyRouter = require("./api/verify");
+const verificationSessionsRouter = require("./api/verificationSessions");
+app.use("/api", verificationCallbackRouter);
+app.use("/api", verifyRouter);
+app.use("/api", verificationSessionsRouter);
+
+// Make Discord client available to API routes
+let discordClient = null;
+
+// Start the Express server
+const PORT = process.env.API_PORT || 3001;
+app.listen(PORT, () => {
+  console.log(`[${new Date().toISOString()}] [API] Server running on port ${PORT}`);
+});
+
+// Function to set the Discord client once the bot is ready
+function setDiscordClient(client) {
+  discordClient = client;
+  app.set('discordClient', client);
+  console.log(`[${new Date().toISOString()}] [API] Discord client set for API routes`);
+}
+
 console.log(`[${new Date().toISOString()}] [STARTUP] Creating bot instance...`);
 try {
     const bot = new LilGargsBot();

@@ -2,13 +2,40 @@ const axios = require("axios");
 const { PublicKey } = require("@solana/web3.js");
 const config = require("../config/environment");
 const logger = require("../utils/logger");
+const BotConfig = require('../database/models/BotConfig');
 
 class NFTVerificationService {
-  constructor() {
+  constructor(client) {
     this.heliusApiKey = config.nft.heliusApiKey;
     this.contractAddress = config.nft.contractAddress;
     this.verifiedCreator = config.nft.verifiedCreator;
     this.rpcUrl = `https://mainnet.helius-rpc.com/?api-key=${this.heliusApiKey}`;
+    this.nftConfig = require('../config/nftConfig');
+    this.client = client;
+  }
+
+  async getLogChannel(guildId) {
+    try {
+      const botConfig = await BotConfig.findOne({ guildId });
+      return botConfig?.logChannelId || null;
+    } catch (error) {
+      logger.error('Error getting log channel:', error);
+      return null;
+    }
+  }
+
+  async sendVerificationLog(guildId, message) {
+    try {
+      const channelId = await this.getLogChannel(guildId);
+      if (!channelId) return;
+
+      const channel = await this.client.channels.fetch(channelId);
+      if (channel && channel.isTextBased()) {
+        await channel.send(message);
+      }
+    } catch (error) {
+      logger.error('Error sending verification log:', error);
+    }
   }
 
   /**
@@ -80,23 +107,50 @@ class NFTVerificationService {
   /**
    * Verify if an NFT belongs to the lil-gargs collection
    */
-  isLilGargsNFT(nft) {
-    // Check if the NFT has the verified creator (RPC API structure)
+  extractContractIdentifiers(nft) {
+    const identifiers = new Set();
+
+    if (nft.grouping) {
+      for (const group of nft.grouping) {
+        if (group?.group_key === 'collection' && group?.group_value) {
+          identifiers.add(String(group.group_value).toLowerCase());
+        }
+      }
+    }
+
+    if (nft.collection?.address) {
+      identifiers.add(String(nft.collection.address).toLowerCase());
+    }
+
+    if (nft.collection?.key) {
+      identifiers.add(String(nft.collection.key).toLowerCase());
+    }
+
+    if (nft.mint) {
+      identifiers.add(String(nft.mint).toLowerCase());
+    }
+
+    return identifiers;
+  }
+
+  matchesDefaultConfig(nft) {
     const hasVerifiedCreator = nft.creators?.some(
-      (creator) => creator.address === this.verifiedCreator && creator.verified
+      (creator) =>
+        this.verifiedCreator &&
+        creator.address === this.verifiedCreator &&
+        creator.verified
     );
 
-    // Additional checks for collection verification (RPC API structure)
     const isFromCollection =
       nft.grouping?.some(
         (group) =>
-          group.group_key === "collection" &&
+          group.group_key === 'collection' &&
           group.group_value === this.contractAddress
       ) ||
       nft.collection?.address === this.contractAddress ||
       nft.collection?.key === this.contractAddress;
 
-    return hasVerifiedCreator || isFromCollection;
+    return Boolean(hasVerifiedCreator || isFromCollection);
   }
 
   /**
@@ -106,7 +160,7 @@ class NFTVerificationService {
     try {
       const allNFTs = await this.getNFTsByOwner(walletAddress);
 
-      const lilGargsNFTs = allNFTs.filter((nft) => this.isLilGargsNFT(nft));
+      const lilGargsNFTs = allNFTs.filter((nft) => this.matchesDefaultConfig(nft));
 
       return lilGargsNFTs.map((nft) => ({
         mint: nft.id,
@@ -126,16 +180,78 @@ class NFTVerificationService {
   /**
    * Verify NFT ownership for a user
    */
-  async verifyNFTOwnership(walletAddress) {
+  async verifyNFTOwnership(walletAddress, { contractAddresses, verifiedCreators } = {}) {
     try {
-      const lilGargsNFTs = await this.getLilGargsNFTs(walletAddress);
+      const allNFTs = await this.getNFTsByOwner(walletAddress);
+
+      const normalizedContracts = (contractAddresses || [])
+        .filter(Boolean)
+        .map((addr) => addr.toLowerCase());
+
+      const normalizedCreators = (verifiedCreators || [])
+        .filter(Boolean)
+        .map((addr) => addr.toLowerCase());
+
+      const matchedNFTs = [];
+      const byContract = {};
+
+      for (const nft of allNFTs) {
+        const identifiers = this.extractContractIdentifiers(nft);
+        const creatorMatch =
+          normalizedCreators.length > 0
+            ? nft.creators?.some((creator) =>
+                normalizedCreators.includes(String(creator.address).toLowerCase()) &&
+                creator.verified
+              )
+            : false;
+
+        let contractMatch = false;
+        let matchedKey = null;
+
+        if (normalizedContracts.length > 0) {
+          for (const identifier of identifiers) {
+            if (normalizedContracts.includes(identifier)) {
+              contractMatch = true;
+              matchedKey = identifier;
+              break;
+            }
+          }
+        }
+
+        const defaultMatch =
+          normalizedContracts.length === 0 &&
+          normalizedCreators.length === 0 &&
+          this.matchesDefaultConfig(nft);
+
+        if (!(contractMatch || creatorMatch || defaultMatch)) {
+          continue;
+        }
+
+        matchedNFTs.push(nft);
+
+        const key = matchedKey || (defaultMatch && this.contractAddress ? this.contractAddress.toLowerCase() : null);
+        if (key) {
+          byContract[key] = (byContract[key] || 0) + 1;
+        }
+      }
+
+      const preparedNFTs = matchedNFTs.map((nft) => ({
+        mint: nft.id,
+        name: nft.content?.metadata?.name || 'Unknown NFT',
+        image: nft.content?.links?.image || nft.content?.files?.[0]?.uri,
+        description: nft.content?.metadata?.description,
+        attributes: nft.content?.metadata?.attributes || [],
+        collection: nft.collection,
+        creators: nft.creators,
+      }));
 
       const verificationResult = {
-        isVerified: lilGargsNFTs.length > 0,
-        nftCount: lilGargsNFTs.length,
-        nfts: lilGargsNFTs,
+        isVerified: preparedNFTs.length > 0,
+        nftCount: preparedNFTs.length,
+        nfts: preparedNFTs,
         walletAddress: walletAddress,
         verifiedAt: new Date(),
+        byContract,
       };
 
       logger.info(

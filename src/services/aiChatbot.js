@@ -12,12 +12,43 @@ class AIChatbot {
       );
     }
     this.genAI = new GoogleGenerativeAI(config.ai.geminiApiKey);
-    this.model = this.genAI.getGenerativeModel({ model: config.ai.model });
+    this.modelId = this.resolveModelId(config.ai.model);
+    this.model = this.genAI.getGenerativeModel({ model: this.modelId });
     this.documentManager = new DocumentManager();
     this.maxContextLength = 4000; // Maximum characters for context
     this.systemPrompt = this.buildSystemPrompt();
     this.generalSystemPrompt = this.buildGeneralSystemPrompt();
     this.oracleSystemPrompt = this.buildOracleSystemPrompt();
+  }
+
+  resolveModelId(requestedModel) {
+    const defaultModel = "gemini-1.0-pro";
+    const fallbacks = {
+      "gemini-1.5-flash": "gemini-1.0-pro",
+      "gemini-1.5-flash-latest": "gemini-1.0-pro",
+      "gemini-1.5-pro": "gemini-1.0-pro",
+      "gemini-1.5-pro-latest": "gemini-1.0-pro",
+      "gemini-pro": "gemini-1.0-pro",
+    };
+
+    const normalized = (requestedModel || "").trim();
+
+    if (!normalized) {
+      logger.warn(
+        `[AIChatbot] GEMINI_MODEL not set. Falling back to default model "${defaultModel}".`
+      );
+      return defaultModel;
+    }
+
+    if (fallbacks[normalized]) {
+      const resolved = fallbacks[normalized];
+      logger.warn(
+        `[AIChatbot] Model "${normalized}" is deprecated or unsupported for generateContent. Using "${resolved}" instead.`
+      );
+      return resolved;
+    }
+
+    return normalized;
   }
 
   /**
@@ -32,7 +63,7 @@ class AIChatbot {
   }
 
   /**
-   * Build the system prompt for the AI
+   * Build the system prompt for the knowledge-base AI
    */
   buildSystemPrompt() {
     return `You are an AI assistant. Your role is to answer questions based ONLY on the provided knowledge base documents.
@@ -54,11 +85,6 @@ Maintain a positive and engaging tone while being accurate and truthful.`;
    */
   buildOracleSystemPrompt() {
     return `You are the mystical Garg Oracle, an ancient and wise entity that provides fortune-telling and mystical guidance. You speak in a mystical, enchanting manner with:
-
-ORACLE CHARACTERISTICS:
-- Poetic and mysterious language
-- References to cosmic forces, stars, moon, and ancient wisdom
-- Fortune-telling style predictions and guidance
 - Encouraging but mystical tone
 - Use of mystical emojis and symbols (🔮, ✨, 🌙, ⭐, 🌟, 💫)
 
@@ -77,15 +103,18 @@ Remember: You are an oracle providing mystical entertainment, not real fortune-t
    */
   async findRelevantDocuments(query, maxDocuments = 5) {
     try {
-      logger.info(`Searching for documents relevant to query: "${query}"`);
+      logger.debug(`[findRelevantDocuments] Query: "${query}"`);
       const searchResults = await this.documentManager.searchDocuments(query, {
         limit: maxDocuments,
         activeOnly: true,
       });
-      logger.info(`Found ${searchResults.length} documents from search`);
+      logger.debug(`[findRelevantDocuments] Search results count: ${searchResults.length}`);
+      if (searchResults.length > 0) {
+        logger.debug(`[findRelevantDocuments] First 3 search result titles: ${searchResults.slice(0, 3).map(doc => doc.title).join(', ')}`);
+      }
       return searchResults;
     } catch (error) {
-      logger.error("Error finding relevant documents:", error);
+      logger.error("[findRelevantDocuments] Error finding relevant documents:", error);
       return [];
     }
   }
@@ -96,23 +125,30 @@ Remember: You are an oracle providing mystical entertainment, not real fortune-t
   async extractRelevantContent(documents) {
     let context = "";
     let totalLength = 0;
+    const documentTitlesUsed = [];
 
     for (const doc of documents) {
       try {
         // Get full document content
         const fullDoc = await Document.findById(doc._id);
-        if (!fullDoc || !fullDoc.content) continue;
+        if (!fullDoc || !fullDoc.content) {
+          logger.debug(`[extractRelevantContent] Document ${doc._id} not found or has no content.`);
+          continue;
+        }
 
         const content = fullDoc.content;
         const docContext = `
 --- From "${fullDoc.title}" ---
 ${content}
 `;
+        logger.debug(`[extractRelevantContent] Considering document: "${fullDoc.title}" (length: ${content.length})`);
 
         if (totalLength + docContext.length <= this.maxContextLength) {
           context += docContext;
           totalLength += docContext.length;
+          documentTitlesUsed.push(fullDoc.title);
           await fullDoc.incrementUsage();
+          logger.debug(`[extractRelevantContent] Added full document "${fullDoc.title}". Current context length: ${totalLength}`);
         } else {
           // If adding the full document exceeds the context, try adding a summary
           const summary =
@@ -124,17 +160,21 @@ ${summary}
           if (totalLength + summaryContext.length <= this.maxContextLength) {
             context += summaryContext;
             totalLength += summaryContext.length;
+            documentTitlesUsed.push(fullDoc.title);
             await fullDoc.incrementUsage();
+            logger.debug(`[extractRelevantContent] Added summary of document "${fullDoc.title}". Current context length: ${totalLength}`);
           } else {
+            logger.debug(`[extractRelevantContent] Document "${fullDoc.title}" (even summary) too large for context. Stopping.`);
             break; // Stop if even the summary is too long
           }
         }
       } catch (error) {
-        logger.error(`Error processing document ${doc._id}:`, error);
+        logger.error(`[extractRelevantContent] Error processing document ${doc._id}:`, error);
         continue;
       }
     }
-
+    logger.debug(`[extractRelevantContent] Final context length: ${totalLength}`);
+    logger.debug(`[extractRelevantContent] Documents used in context: ${documentTitlesUsed.join(', ')}`);
     return context;
   }
 
@@ -172,14 +212,15 @@ Please provide a helpful response based on the knowledge base context above. If 
    */
   async processMessage(userQuery, userId = null) {
     try {
-      logger.info(
-        `Processing AI chat message: "${userQuery}" from user ${userId}`
+      logger.debug(
+        `[processMessage] Processing AI chat message: "${userQuery}" from user ${userId}`
       );
 
       // Find relevant documents
       const relevantDocs = await this.findRelevantDocuments(userQuery);
 
       if (relevantDocs.length === 0) {
+        logger.debug(`[processMessage] No relevant documents found for query: "${userQuery}"`);
         return {
           response:
             "I don't have any information about that in my knowledge base. Please make sure relevant documents have been added to help me answer your questions!",
@@ -457,6 +498,57 @@ Lil Gargs is a unique Discord community that combines the exciting world of NFTs
 Verified holders get access to exclusive channels, special roles, and enhanced features!
 
 Ready to begin your adventure? Let's get started! 🎊`;
+    }
+  }
+  /**
+   * Check if a query is related to Lil Gargs
+   */
+  isLilGargsRelated(query) {
+    // Simple keyword detection for Lil Gargs related topics
+    const lilGargsKeywords = [
+      'lil garg', 'garg', 'nft', 'pet', 'battle', 'verification',
+      'holder', 'collection', 'mint', 'wallet', 'discord', 'server',
+      'community', 'role', 'reward', 'benefit', 'perk', 'access'
+    ];
+
+    const lowerQuery = query.toLowerCase();
+    return lilGargsKeywords.some(keyword =>
+      lowerQuery.includes(keyword)
+    );
+  }
+
+  /**
+   * Process AI chat when bot is mentioned - exactly like askgarg command
+   */
+  async processAiChatMention(message, client) {
+    try {
+      // Get the message content without the bot mention
+      const botMention = `<@${client.user.id}>`;
+      const botMentionWithNickname = `<@!${client.user.id}>`;
+      let userQuery = message.content.replace(new RegExp(`^${botMention}\\s*|^${botMentionWithNickname}\\s*`, 'i'), '').trim();
+
+      // Validate the query
+      if (!this.isValidQuery(userQuery)) {
+        return await message.reply('❌ Please provide a valid message (3-2000 characters).');
+      }
+
+      // First, try to find relevant documents (like /askgarg)
+      const result = await this.processMessage(userQuery, message.author.id);
+
+      // If no documents were used, fall back to general AI response (like /chat)
+      if (!result.hasContext || result.documentsUsed === 0) {
+        const generalResponse = await this.generateGeneralResponse(userQuery);
+        await message.reply(generalResponse.response);
+      } else {
+        // Use the document-based response
+        await message.reply(result.response);
+      }
+
+      // Log the interaction
+      logger.info(`AI chat from ${message.author.username} (${message.author.id}): "${userQuery}" - Response length: ${result.response.length}`);
+    } catch (error) {
+      logger.error('Error processing AI chat mention:', error);
+      await message.reply('❌ I encountered an error while processing your message. Please try again later.');
     }
   }
 }
