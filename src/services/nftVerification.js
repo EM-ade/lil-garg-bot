@@ -86,7 +86,7 @@ class NFTVerificationService {
   }
 
   /**
-   * Get all NFTs owned by a wallet address
+   * Get all NFTs owned by a wallet address with pagination support
    */
   async getNFTsByOwner(walletAddress) {
     try {
@@ -94,39 +94,65 @@ class NFTVerificationService {
         throw new Error("Invalid Solana wallet address");
       }
 
-      const fetchNFTs = async () => {
-        const response = await axios.post(
-          this.rpcUrl,
-          {
-            jsonrpc: "2.0",
-            id: "nft-verification",
-            method: "getAssetsByOwner",
-            params: {
-              ownerAddress: walletAddress,
-              page: 1,
-              limit: 1000,
-              displayOptions: {
-                showFungible: false,
-                showNativeBalance: false,
-                showInscription: false,
+      let allNFTs = [];
+      let page = 1;
+      let hasMore = true;
+      const limit = 1000;
+
+      while (hasMore) {
+        const fetchNFTs = async () => {
+          const response = await axios.post(
+            this.rpcUrl,
+            {
+              jsonrpc: "2.0",
+              id: "nft-verification",
+              method: "getAssetsByOwner",
+              params: {
+                ownerAddress: walletAddress,
+                page: page,
+                limit: limit,
+                displayOptions: {
+                  showFungible: false,
+                  showNativeBalance: false,
+                  showInscription: false,
+                },
               },
             },
-          },
-          {
-            headers: {
-              "Content-Type": "application/json",
-            },
+            {
+              headers: {
+                "Content-Type": "application/json",
+              },
+            }
+          );
+
+          if (response.data.error) {
+            throw new Error(response.data.error.message || "Helius API error");
           }
-        );
 
-        if (response.data.error) {
-          throw new Error(response.data.error.message || "Helius API error");
+          return response.data.result || {};
+        };
+
+        const result = await this.retryWithBackoff(fetchNFTs);
+        const items = result.items || [];
+        
+        allNFTs = allNFTs.concat(items);
+        
+        // Check if there are more pages
+        // Helius API returns total and page info in the result
+        const total = result.total || 0;
+        const currentCount = page * limit;
+        hasMore = items.length === limit && currentCount < total;
+        
+        if (hasMore) {
+          page++;
+          logger.info(`Fetching page ${page} for wallet ${walletAddress} (${allNFTs.length} NFTs so far)`);
+          // Add a small delay between pages to avoid rate limiting
+          await new Promise(resolve => setTimeout(resolve, 200));
         }
+      }
 
-        return response.data.result?.items || [];
-      };
-
-      return await this.retryWithBackoff(fetchNFTs);
+      logger.info(`Fetched total of ${allNFTs.length} NFTs for wallet ${walletAddress} across ${page} page(s)`);
+      return allNFTs;
     } catch (error) {
       logger.error("Error fetching NFTs from Helius:", error.message);
       if (error.response) {
