@@ -177,16 +177,37 @@ class NFTVerificationService {
         creator.verified
     );
 
-    const isFromCollection =
-      nft.grouping?.some(
+    // Check multiple collection identification methods
+    const collectionMatches = {
+      groupingMatch: nft.grouping?.some(
         (group) =>
           group.group_key === 'collection' &&
           group.group_value === this.contractAddress
-      ) ||
-      nft.collection?.address === this.contractAddress ||
-      nft.collection?.key === this.contractAddress;
+      ),
+      collectionAddressMatch: nft.collection?.address === this.contractAddress,
+      collectionKeyMatch: nft.collection?.key === this.contractAddress,
+      // Case-insensitive matching for collection address
+      collectionAddressLowerMatch: nft.collection?.address?.toLowerCase() === this.contractAddress?.toLowerCase(),
+      collectionKeyLowerMatch: nft.collection?.key?.toLowerCase() === this.contractAddress?.toLowerCase()
+    };
 
-    return Boolean(hasVerifiedCreator || isFromCollection);
+    const isFromCollection = Object.values(collectionMatches).some(Boolean);
+    const matches = Boolean(hasVerifiedCreator || isFromCollection);
+    
+    // Debug logging for NFT matching
+    logger.debug(`NFT ${nft.id} (${nft.content?.metadata?.name || 'Unknown'}) matching check:`, {
+      matches,
+      hasVerifiedCreator,
+      collectionMatches,
+      configuredCreator: this.verifiedCreator,
+      configuredContract: this.contractAddress,
+      nftCreators: nft.creators?.map(c => ({ address: c.address, verified: c.verified })),
+      nftGrouping: nft.grouping,
+      nftCollectionAddress: nft.collection?.address,
+      nftCollectionKey: nft.collection?.key
+    });
+
+    return matches;
   }
 
   /**
@@ -195,8 +216,10 @@ class NFTVerificationService {
   async getLilGargsNFTs(walletAddress) {
     try {
       const allNFTs = await this.getNFTsByOwner(walletAddress);
+      logger.info(`Fetched ${allNFTs.length} total NFTs for wallet ${walletAddress}`);
 
       const lilGargsNFTs = allNFTs.filter((nft) => this.matchesDefaultConfig(nft));
+      logger.info(`Found ${lilGargsNFTs.length} matching Lil Gargs NFTs out of ${allNFTs.length} total NFTs`);
 
       return lilGargsNFTs.map((nft) => ({
         mint: nft.id,
@@ -219,6 +242,7 @@ class NFTVerificationService {
   async verifyNFTOwnership(walletAddress, { contractAddresses, verifiedCreators } = {}) {
     try {
       const allNFTs = await this.getNFTsByOwner(walletAddress);
+      logger.info(`Verifying NFT ownership for ${walletAddress}: ${allNFTs.length} total NFTs fetched`);
 
       const normalizedContracts = (contractAddresses || [])
         .filter(Boolean)
