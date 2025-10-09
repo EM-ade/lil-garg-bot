@@ -54,6 +54,38 @@ class NFTVerificationService {
   }
 
   /**
+   * Retry helper with exponential backoff
+   */
+  async retryWithBackoff(fn, maxRetries = 3, baseDelay = 1000) {
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        return await fn();
+      } catch (error) {
+        const isRateLimitError = 
+          error.response?.status === 429 || 
+          error.message?.includes('429');
+        
+        const isLastAttempt = attempt === maxRetries;
+        
+        if (!isRateLimitError || isLastAttempt) {
+          throw error;
+        }
+        
+        const delay = baseDelay * Math.pow(2, attempt);
+        const jitter = Math.random() * 500;
+        const totalDelay = delay + jitter;
+        
+        logger.warn(
+          `Rate limited by Helius API (attempt ${attempt + 1}/${maxRetries + 1}). ` +
+          `Retrying in ${Math.round(totalDelay)}ms...`
+        );
+        
+        await new Promise(resolve => setTimeout(resolve, totalDelay));
+      }
+    }
+  }
+
+  /**
    * Get all NFTs owned by a wallet address
    */
   async getNFTsByOwner(walletAddress) {
@@ -62,35 +94,39 @@ class NFTVerificationService {
         throw new Error("Invalid Solana wallet address");
       }
 
-      const response = await axios.post(
-        this.rpcUrl,
-        {
-          jsonrpc: "2.0",
-          id: "nft-verification",
-          method: "getAssetsByOwner",
-          params: {
-            ownerAddress: walletAddress,
-            page: 1,
-            limit: 1000,
-            displayOptions: {
-              showFungible: false,
-              showNativeBalance: false,
-              showInscription: false,
+      const fetchNFTs = async () => {
+        const response = await axios.post(
+          this.rpcUrl,
+          {
+            jsonrpc: "2.0",
+            id: "nft-verification",
+            method: "getAssetsByOwner",
+            params: {
+              ownerAddress: walletAddress,
+              page: 1,
+              limit: 1000,
+              displayOptions: {
+                showFungible: false,
+                showNativeBalance: false,
+                showInscription: false,
+              },
             },
           },
-        },
-        {
-          headers: {
-            "Content-Type": "application/json",
-          },
+          {
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        if (response.data.error) {
+          throw new Error(response.data.error.message || "Helius API error");
         }
-      );
 
-      if (response.data.error) {
-        throw new Error(response.data.error.message || "Helius API error");
-      }
+        return response.data.result?.items || [];
+      };
 
-      return response.data.result?.items || [];
+      return await this.retryWithBackoff(fetchNFTs);
     } catch (error) {
       logger.error("Error fetching NFTs from Helius:", error.message);
       if (error.response) {
@@ -276,28 +312,32 @@ class NFTVerificationService {
         throw new Error("Invalid mint address");
       }
 
-      const response = await axios.post(
-        this.rpcUrl,
-        {
-          jsonrpc: "2.0",
-          id: "nft-details",
-          method: "getAsset",
-          params: {
-            id: mintAddress,
+      const fetchDetails = async () => {
+        const response = await axios.post(
+          this.rpcUrl,
+          {
+            jsonrpc: "2.0",
+            id: "nft-details",
+            method: "getAsset",
+            params: {
+              id: mintAddress,
+            },
           },
-        },
-        {
-          headers: {
-            "Content-Type": "application/json",
-          },
+          {
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        if (response.data.error) {
+          throw new Error(response.data.error.message || "Helius API error");
         }
-      );
 
-      if (response.data.error) {
-        throw new Error(response.data.error.message || "Helius API error");
-      }
+        return response.data.result;
+      };
 
-      return response.data.result;
+      return await this.retryWithBackoff(fetchDetails);
     } catch (error) {
       logger.error("Error fetching NFT details:", error.message);
       throw new Error(`Failed to fetch NFT details: ${error.message}`);

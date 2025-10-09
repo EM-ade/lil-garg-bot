@@ -161,10 +161,10 @@ class LilGargsBot {
         this.cleanupManager.setupCleanupJobs();
         logger.info("Cleanup manager started successfully");
 
-        // Schedule periodic NFT role checks (e.e.g., every 30 minutes)
-        const periodicIntervalMs = 5 * 60 * 1000; // 5 minutes (testing)
+        // Schedule periodic NFT role checks every 30 minutes
+        const periodicIntervalMs = 30 * 60 * 1000; // 30 minutes
         setInterval(() => periodicRoleCheck(this.client), periodicIntervalMs);
-        logger.info(`Scheduled periodic NFT role checks every ${periodicIntervalMs / 1000}s (testing).`);
+        logger.info(`Scheduled periodic NFT role checks every ${periodicIntervalMs / 60000} minutes.`);
       } catch (error) {
         logger.error('Failed to start automated services:', error)
       }

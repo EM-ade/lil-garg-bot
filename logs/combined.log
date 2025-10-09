@@ -6172,3 +6172,300 @@
 {"level":"debug","message":"Rate limiter cleanup: removed 1 user limits and 1 command limits","service":"lil-gargs-bot","timestamp":"2025-09-30 15:23:20"}
 {"level":"info","message":"[verification] Created session 245540c2-d3fa-487a-830e-7865d0bfd4d4 for discordId=1356652426240852009 guildId=1409680783882457244","service":"lil-gargs-bot","timestamp":"2025-09-30 15:23:52"}
 {"level":"info","message":"SIGINT received, shutting down gracefully","service":"lil-gargs-bot","timestamp":"2025-09-30 15:24:43"}
+{"level":"info","message":"Starting scheduled cleanup...","service":"lil-gargs-bot","timestamp":"2025-10-04 23:02:36"}
+{"level":"info","message":"Scheduled cleanup completed","service":"lil-gargs-bot","timestamp":"2025-10-04 23:02:36"}
+{"level":"info","message":"Cleanup manager initialized","service":"lil-gargs-bot","timestamp":"2025-10-04 23:02:36"}
+{"level":"info","message":"MongoDB connected successfully!","service":"lil-gargs-bot","timestamp":"2025-10-04 23:02:41"}
+{"level":"info","message":"Skipped legacy commands: add-nft-contract.js, config-nft-role.js, setup-verification.js, remove-verification.js, set-verification-log-channel.js","service":"lil-gargs-bot","timestamp":"2025-10-04 23:02:41"}
+{"level":"info","message":"Loaded command: add-document","service":"lil-gargs-bot","timestamp":"2025-10-04 23:02:41"}
+{"level":"info","message":"Loaded command: admin","service":"lil-gargs-bot","timestamp":"2025-10-04 23:02:41"}
+{"level":"info","message":"Loaded command: askgarg","service":"lil-gargs-bot","timestamp":"2025-10-04 23:02:41"}
+{"level":"info","message":"Loaded command: battle","service":"lil-gargs-bot","timestamp":"2025-10-04 23:02:41"}
+{"level":"info","message":"Loaded command: chat","service":"lil-gargs-bot","timestamp":"2025-10-04 23:02:41"}
+{"level":"info","message":"Loaded command: cleanup","service":"lil-gargs-bot","timestamp":"2025-10-04 23:02:41"}
+{"level":"info","message":"Loaded command: config","service":"lil-gargs-bot","timestamp":"2025-10-04 23:02:41"}
+{"level":"info","message":"Loaded command: debug-search","service":"lil-gargs-bot","timestamp":"2025-10-04 23:02:42"}
+{"level":"info","message":"Loaded command: garg-info","service":"lil-gargs-bot","timestamp":"2025-10-04 23:02:42"}
+{"level":"info","message":"Loaded command: gargoracle","service":"lil-gargs-bot","timestamp":"2025-10-04 23:02:42"}
+{"level":"info","message":"Loaded command: help","service":"lil-gargs-bot","timestamp":"2025-10-04 23:02:42"}
+{"level":"info","message":"Loaded command: list-documents","service":"lil-gargs-bot","timestamp":"2025-10-04 23:02:42"}
+{"level":"info","message":"Loaded command: lockdown","service":"lil-gargs-bot","timestamp":"2025-10-04 23:02:42"}
+{"level":"info","message":"Loaded command: nft-monitor","service":"lil-gargs-bot","timestamp":"2025-10-04 23:02:42"}
+{"level":"info","message":"Loaded command: pet-maintenance","service":"lil-gargs-bot","timestamp":"2025-10-04 23:02:42"}
+{"level":"info","message":"Loaded command: pet","service":"lil-gargs-bot","timestamp":"2025-10-04 23:02:42"}
+{"level":"info","message":"Loaded command: place-buttons","service":"lil-gargs-bot","timestamp":"2025-10-04 23:02:42"}
+{"level":"info","message":"Loaded command: remove-document","service":"lil-gargs-bot","timestamp":"2025-10-04 23:02:42"}
+{"level":"info","message":"Loaded command: role-add","service":"lil-gargs-bot","timestamp":"2025-10-04 23:02:42"}
+{"level":"info","message":"Loaded command: role-remove","service":"lil-gargs-bot","timestamp":"2025-10-04 23:02:42"}
+{"level":"info","message":"Loaded command: security","service":"lil-gargs-bot","timestamp":"2025-10-04 23:02:42"}
+{"level":"info","message":"Loaded command: status","service":"lil-gargs-bot","timestamp":"2025-10-04 23:02:42"}
+{"level":"info","message":"Loaded command: ticket","service":"lil-gargs-bot","timestamp":"2025-10-04 23:02:42"}
+{"level":"info","message":"Loaded command: unlock","service":"lil-gargs-bot","timestamp":"2025-10-04 23:02:42"}
+{"level":"info","message":"Loaded command: verification-config","service":"lil-gargs-bot","timestamp":"2025-10-04 23:02:42"}
+{"level":"info","message":"Loaded command: verify-nft","service":"lil-gargs-bot","timestamp":"2025-10-04 23:02:42"}
+{"level":"info","message":"Loaded command: verify","service":"lil-gargs-bot","timestamp":"2025-10-04 23:02:42"}
+{"level":"info","message":"Loaded command: welcome","service":"lil-gargs-bot","timestamp":"2025-10-04 23:02:42"}
+{"level":"info","message":"Lil Gargs Bot initialized successfully!","service":"lil-gargs-bot","timestamp":"2025-10-04 23:02:43"}
+{"level":"info","message":"Bot is ready! Logged in as lil-garg#9524","service":"lil-gargs-bot","timestamp":"2025-10-04 23:02:43"}
+{"level":"info","message":"Starting NFT monitoring service...","service":"lil-gargs-bot","timestamp":"2025-10-04 23:02:43"}
+{"level":"info","message":"Starting comprehensive NFT check...","service":"lil-gargs-bot","timestamp":"2025-10-04 23:02:43"}
+{"level":"info","message":"Checking 0 verified users in guild 1403906075031371776","service":"lil-gargs-bot","timestamp":"2025-10-04 23:02:44"}
+{"level":"warn","message":"Guild 1403906075031371776 not found in cache during NFT check. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-04 23:02:44"}
+{"level":"info","message":"Checking 1 verified users in guild 1404126315577213009","service":"lil-gargs-bot","timestamp":"2025-10-04 23:02:44"}
+{"level":"info","message":"Validating Solana address: BRofRUhr1k9fqcpjncBR3xHPxWNW2tHYfYHFPxtqSbhv","service":"lil-gargs-bot","timestamp":"2025-10-04 23:02:44"}
+{"level":"info","message":"Address BRofRUhr1k9fqcpjncBR3xHPxWNW2tHYfYHFPxtqSbhv is valid","service":"lil-gargs-bot","timestamp":"2025-10-04 23:02:44"}
+{"level":"info","message":"NFT verification for BRofRUhr1k9fqcpjncBR3xHPxWNW2tHYfYHFPxtqSbhv: VERIFIED (1 NFTs)","service":"lil-gargs-bot","timestamp":"2025-10-04 23:02:45"}
+{"level":"info","message":"Assigning roles for user elderhorror with wallet BRofRUhr1k9fqcpjncBR3xHPxWNW2tHYfYHFPxtqSbhv","service":"lil-gargs-bot","timestamp":"2025-10-04 23:02:45"}
+{"level":"warn","message":"No NFT role tiers configured for guild ElderHorror's server test. Skipping role assignment.","service":"lil-gargs-bot","timestamp":"2025-10-04 23:02:47"}
+{"level":"info","message":"Checking 0 verified users in guild 1339740164469166111","service":"lil-gargs-bot","timestamp":"2025-10-04 23:02:48"}
+{"level":"warn","message":"Guild 1339740164469166111 not found in cache during NFT check. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-04 23:02:48"}
+{"level":"info","message":"Checking 0 verified users in guild 1409680783882457244","service":"lil-gargs-bot","timestamp":"2025-10-04 23:02:48"}
+{"level":"info","message":"NFT check completed: 1 users checked, 0 users updated","service":"lil-gargs-bot","timestamp":"2025-10-04 23:02:48"}
+{"level":"info","message":"NFT monitoring service started successfully","service":"lil-gargs-bot","timestamp":"2025-10-04 23:02:48"}
+{"level":"info","message":"NFT monitoring service started successfully","service":"lil-gargs-bot","timestamp":"2025-10-04 23:02:48"}
+{"level":"info","message":"Starting pet maintenance service...","service":"lil-gargs-bot","timestamp":"2025-10-04 23:02:48"}
+{"level":"info","message":"Starting pet maintenance cycle...","service":"lil-gargs-bot","timestamp":"2025-10-04 23:02:48"}
+{"level":"info","message":"Pet maintenance completed: 0 pets checked, 0 pets updated","service":"lil-gargs-bot","timestamp":"2025-10-04 23:02:48"}
+{"level":"info","message":"Pet maintenance service started successfully","service":"lil-gargs-bot","timestamp":"2025-10-04 23:02:48"}
+{"level":"info","message":"Pet maintenance service started successfully","service":"lil-gargs-bot","timestamp":"2025-10-04 23:02:48"}
+{"level":"info","message":"Starting scheduled cleanup...","service":"lil-gargs-bot","timestamp":"2025-10-04 23:02:48"}
+{"level":"info","message":"Cleanup manager initialized","service":"lil-gargs-bot","timestamp":"2025-10-04 23:02:48"}
+{"level":"info","message":"Cleanup manager started successfully","service":"lil-gargs-bot","timestamp":"2025-10-04 23:02:48"}
+{"level":"info","message":"Scheduled periodic NFT role checks every 300s (testing).","service":"lil-gargs-bot","timestamp":"2025-10-04 23:02:48"}
+{"_message":"User validation failed","errors":{"userGuildId":{"kind":"required","message":"Path `userGuildId` is required.","name":"ValidatorError","path":"userGuildId","properties":{"message":"Path `userGuildId` is required.","path":"userGuildId","type":"required"}}},"level":"error","message":"Failed to update user 1356652426240852009: User validation failed: userGuildId: Path `userGuildId` is required.","service":"lil-gargs-bot","stack":"ValidationError: User validation failed: userGuildId: Path `userGuildId` is required.\n    at Document.invalidate (C:\\Users\\ElderHorror\\Documents\\GitHub\\Fin_Lil_Gargs_Bot\\lil-garg-bot\\node_modules\\mongoose\\lib\\document.js:3358:32)\n    at C:\\Users\\ElderHorror\\Documents\\GitHub\\Fin_Lil_Gargs_Bot\\lil-garg-bot\\node_modules\\mongoose\\lib\\document.js:3119:17\n    at C:\\Users\\ElderHorror\\Documents\\GitHub\\Fin_Lil_Gargs_Bot\\lil-garg-bot\\node_modules\\mongoose\\lib\\schemaType.js:1410:9\n    at process.processTicksAndRejections (node:internal/process/task_queues:85:11)","timestamp":"2025-10-04 23:02:49"}
+{"_message":"User validation failed","errors":{"userGuildId":{"kind":"required","message":"Path `userGuildId` is required.","name":"ValidatorError","path":"userGuildId","properties":{"message":"Path `userGuildId` is required.","path":"userGuildId","type":"required"}}},"level":"error","message":"Failed to update user 1356652426240852009: User validation failed: userGuildId: Path `userGuildId` is required.","service":"lil-gargs-bot","stack":"ValidationError: User validation failed: userGuildId: Path `userGuildId` is required.\n    at Document.invalidate (C:\\Users\\ElderHorror\\Documents\\GitHub\\Fin_Lil_Gargs_Bot\\lil-garg-bot\\node_modules\\mongoose\\lib\\document.js:3358:32)\n    at C:\\Users\\ElderHorror\\Documents\\GitHub\\Fin_Lil_Gargs_Bot\\lil-garg-bot\\node_modules\\mongoose\\lib\\document.js:3119:17\n    at C:\\Users\\ElderHorror\\Documents\\GitHub\\Fin_Lil_Gargs_Bot\\lil-garg-bot\\node_modules\\mongoose\\lib\\schemaType.js:1410:9\n    at process.processTicksAndRejections (node:internal/process/task_queues:85:11)","timestamp":"2025-10-04 23:02:49"}
+{"level":"info","message":"Scheduled cleanup completed","service":"lil-gargs-bot","timestamp":"2025-10-04 23:02:49"}
+{"level":"info","message":"[verification] Created session f9daefed-cd3a-4329-a88b-757f773fcb6a for discordId=1356652426240852009 guildId=1409680783882457244","service":"lil-gargs-bot","timestamp":"2025-10-04 23:03:15"}
+{"level":"info","message":"Verifying signed message for 51Aeb6XE819mH7SVSmaejN318uKkehM1W6TBduq1nsjX","service":"lil-gargs-bot","timestamp":"2025-10-04 23:04:34"}
+{"level":"info","message":"Validating Solana address: 51Aeb6XE819mH7SVSmaejN318uKkehM1W6TBduq1nsjX","service":"lil-gargs-bot","timestamp":"2025-10-04 23:04:35"}
+{"level":"info","message":"Address 51Aeb6XE819mH7SVSmaejN318uKkehM1W6TBduq1nsjX is valid","service":"lil-gargs-bot","timestamp":"2025-10-04 23:04:35"}
+{"level":"debug","message":"Rate limiter cleanup: removed 1 user limits and 1 command limits","service":"lil-gargs-bot","timestamp":"2025-10-04 23:04:35"}
+{"level":"info","message":"NFT verification for 51Aeb6XE819mH7SVSmaejN318uKkehM1W6TBduq1nsjX: NOT VERIFIED (0 NFTs)","service":"lil-gargs-bot","timestamp":"2025-10-04 23:04:35"}
+{"level":"info","message":"SIGINT received, shutting down gracefully","service":"lil-gargs-bot","timestamp":"2025-10-04 23:04:51"}
+{"level":"info","message":"Starting scheduled cleanup...","service":"lil-gargs-bot","timestamp":"2025-10-06 05:42:58"}
+{"level":"info","message":"Scheduled cleanup completed","service":"lil-gargs-bot","timestamp":"2025-10-06 05:42:58"}
+{"level":"info","message":"Cleanup manager initialized","service":"lil-gargs-bot","timestamp":"2025-10-06 05:42:58"}
+{"level":"info","message":"MongoDB connected successfully!","service":"lil-gargs-bot","timestamp":"2025-10-06 05:43:17"}
+{"level":"info","message":"Skipped legacy commands: add-nft-contract.js, config-nft-role.js, setup-verification.js, remove-verification.js, set-verification-log-channel.js","service":"lil-gargs-bot","timestamp":"2025-10-06 05:43:17"}
+{"level":"info","message":"Loaded command: add-document","service":"lil-gargs-bot","timestamp":"2025-10-06 05:43:17"}
+{"level":"info","message":"Loaded command: admin","service":"lil-gargs-bot","timestamp":"2025-10-06 05:43:17"}
+{"level":"info","message":"Loaded command: askgarg","service":"lil-gargs-bot","timestamp":"2025-10-06 05:43:17"}
+{"level":"info","message":"Loaded command: battle","service":"lil-gargs-bot","timestamp":"2025-10-06 05:43:17"}
+{"level":"info","message":"Loaded command: chat","service":"lil-gargs-bot","timestamp":"2025-10-06 05:43:17"}
+{"level":"info","message":"Loaded command: cleanup","service":"lil-gargs-bot","timestamp":"2025-10-06 05:43:18"}
+{"level":"info","message":"Loaded command: config","service":"lil-gargs-bot","timestamp":"2025-10-06 05:43:18"}
+{"level":"info","message":"Loaded command: debug-search","service":"lil-gargs-bot","timestamp":"2025-10-06 05:43:18"}
+{"level":"info","message":"Loaded command: garg-info","service":"lil-gargs-bot","timestamp":"2025-10-06 05:43:18"}
+{"level":"info","message":"Loaded command: gargoracle","service":"lil-gargs-bot","timestamp":"2025-10-06 05:43:18"}
+{"level":"info","message":"Loaded command: help","service":"lil-gargs-bot","timestamp":"2025-10-06 05:43:18"}
+{"level":"info","message":"Loaded command: list-documents","service":"lil-gargs-bot","timestamp":"2025-10-06 05:43:18"}
+{"level":"info","message":"Loaded command: lockdown","service":"lil-gargs-bot","timestamp":"2025-10-06 05:43:18"}
+{"level":"info","message":"Loaded command: nft-monitor","service":"lil-gargs-bot","timestamp":"2025-10-06 05:43:18"}
+{"level":"info","message":"Loaded command: pet-maintenance","service":"lil-gargs-bot","timestamp":"2025-10-06 05:43:18"}
+{"level":"info","message":"Loaded command: pet","service":"lil-gargs-bot","timestamp":"2025-10-06 05:43:18"}
+{"level":"info","message":"Loaded command: place-buttons","service":"lil-gargs-bot","timestamp":"2025-10-06 05:43:18"}
+{"level":"info","message":"Loaded command: remove-document","service":"lil-gargs-bot","timestamp":"2025-10-06 05:43:18"}
+{"level":"info","message":"Loaded command: role-add","service":"lil-gargs-bot","timestamp":"2025-10-06 05:43:18"}
+{"level":"info","message":"Loaded command: role-remove","service":"lil-gargs-bot","timestamp":"2025-10-06 05:43:18"}
+{"level":"info","message":"Loaded command: security","service":"lil-gargs-bot","timestamp":"2025-10-06 05:43:18"}
+{"level":"info","message":"Loaded command: status","service":"lil-gargs-bot","timestamp":"2025-10-06 05:43:18"}
+{"level":"info","message":"Loaded command: ticket","service":"lil-gargs-bot","timestamp":"2025-10-06 05:43:18"}
+{"level":"info","message":"Loaded command: unlock","service":"lil-gargs-bot","timestamp":"2025-10-06 05:43:18"}
+{"level":"info","message":"Loaded command: verification-config","service":"lil-gargs-bot","timestamp":"2025-10-06 05:43:18"}
+{"level":"info","message":"Loaded command: verify-nft","service":"lil-gargs-bot","timestamp":"2025-10-06 05:43:18"}
+{"level":"info","message":"Loaded command: verify","service":"lil-gargs-bot","timestamp":"2025-10-06 05:43:18"}
+{"level":"info","message":"Loaded command: welcome","service":"lil-gargs-bot","timestamp":"2025-10-06 05:43:18"}
+{"level":"info","message":"Bot is ready! Logged in as lil-garg#9524","service":"lil-gargs-bot","timestamp":"2025-10-06 05:43:20"}
+{"level":"info","message":"Starting NFT monitoring service...","service":"lil-gargs-bot","timestamp":"2025-10-06 05:43:20"}
+{"level":"info","message":"Starting comprehensive NFT check...","service":"lil-gargs-bot","timestamp":"2025-10-06 05:43:20"}
+{"level":"info","message":"Lil Gargs Bot initialized successfully!","service":"lil-gargs-bot","timestamp":"2025-10-06 05:43:20"}
+{"level":"info","message":"Checking 0 verified users in guild 1403906075031371776","service":"lil-gargs-bot","timestamp":"2025-10-06 05:43:21"}
+{"level":"warn","message":"Guild 1403906075031371776 not found in cache during NFT check. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:43:21"}
+{"level":"info","message":"Checking 1 verified users in guild 1404126315577213009","service":"lil-gargs-bot","timestamp":"2025-10-06 05:43:21"}
+{"level":"info","message":"Validating Solana address: BRofRUhr1k9fqcpjncBR3xHPxWNW2tHYfYHFPxtqSbhv","service":"lil-gargs-bot","timestamp":"2025-10-06 05:43:21"}
+{"level":"info","message":"Address BRofRUhr1k9fqcpjncBR3xHPxWNW2tHYfYHFPxtqSbhv is valid","service":"lil-gargs-bot","timestamp":"2025-10-06 05:43:21"}
+{"level":"error","message":"Error fetching NFTs from Helius:","service":"lil-gargs-bot","timestamp":"2025-10-06 05:43:22"}
+{"level":"error","message":"Helius API response:","service":"lil-gargs-bot","timestamp":"2025-10-06 05:43:22"}
+{"level":"error","message":"Error verifying NFT ownership:","service":"lil-gargs-bot","timestamp":"2025-10-06 05:43:22"}
+{"level":"error","message":"Error checking NFTs for user 1356652426240852009: Failed to fetch NFTs: Request failed with status code 429","service":"lil-gargs-bot","timestamp":"2025-10-06 05:43:22"}
+{"_message":"User validation failed","errors":{"userGuildId":{"kind":"required","message":"Path `userGuildId` is required.","name":"ValidatorError","path":"userGuildId","properties":{"message":"Path `userGuildId` is required.","path":"userGuildId","type":"required"}}},"level":"error","message":"Error checking user 1356652426240852009 in guild 1404126315577213009: User validation failed: userGuildId: Path `userGuildId` is required.","service":"lil-gargs-bot","stack":"ValidationError: User validation failed: userGuildId: Path `userGuildId` is required.\n    at Document.invalidate (C:\\Users\\ElderHorror\\Documents\\GitHub\\Fin_Lil_Gargs_Bot\\lil-garg-bot\\node_modules\\mongoose\\lib\\document.js:3358:32)\n    at C:\\Users\\ElderHorror\\Documents\\GitHub\\Fin_Lil_Gargs_Bot\\lil-garg-bot\\node_modules\\mongoose\\lib\\document.js:3119:17\n    at C:\\Users\\ElderHorror\\Documents\\GitHub\\Fin_Lil_Gargs_Bot\\lil-garg-bot\\node_modules\\mongoose\\lib\\schemaType.js:1410:9\n    at process.processTicksAndRejections (node:internal/process/task_queues:85:11)","timestamp":"2025-10-06 05:43:22"}
+{"level":"info","message":"Checking 0 verified users in guild 1339740164469166111","service":"lil-gargs-bot","timestamp":"2025-10-06 05:43:22"}
+{"level":"warn","message":"Guild 1339740164469166111 not found in cache during NFT check. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:43:22"}
+{"level":"info","message":"Checking 0 verified users in guild 1409680783882457244","service":"lil-gargs-bot","timestamp":"2025-10-06 05:43:23"}
+{"level":"info","message":"NFT check completed: 0 users checked, 0 users updated","service":"lil-gargs-bot","timestamp":"2025-10-06 05:43:23"}
+{"level":"info","message":"NFT monitoring service started successfully","service":"lil-gargs-bot","timestamp":"2025-10-06 05:43:23"}
+{"level":"info","message":"NFT monitoring service started successfully","service":"lil-gargs-bot","timestamp":"2025-10-06 05:43:23"}
+{"level":"info","message":"Starting pet maintenance service...","service":"lil-gargs-bot","timestamp":"2025-10-06 05:43:23"}
+{"level":"info","message":"Starting pet maintenance cycle...","service":"lil-gargs-bot","timestamp":"2025-10-06 05:43:23"}
+{"level":"info","message":"Pet maintenance completed: 0 pets checked, 0 pets updated","service":"lil-gargs-bot","timestamp":"2025-10-06 05:43:23"}
+{"level":"info","message":"Pet maintenance service started successfully","service":"lil-gargs-bot","timestamp":"2025-10-06 05:43:23"}
+{"level":"info","message":"Pet maintenance service started successfully","service":"lil-gargs-bot","timestamp":"2025-10-06 05:43:23"}
+{"level":"info","message":"Starting scheduled cleanup...","service":"lil-gargs-bot","timestamp":"2025-10-06 05:43:23"}
+{"level":"info","message":"Cleanup manager initialized","service":"lil-gargs-bot","timestamp":"2025-10-06 05:43:23"}
+{"level":"info","message":"Cleanup manager started successfully","service":"lil-gargs-bot","timestamp":"2025-10-06 05:43:23"}
+{"level":"info","message":"Scheduled periodic NFT role checks every 300s (testing).","service":"lil-gargs-bot","timestamp":"2025-10-06 05:43:23"}
+{"_message":"User validation failed","errors":{"userGuildId":{"kind":"required","message":"Path `userGuildId` is required.","name":"ValidatorError","path":"userGuildId","properties":{"message":"Path `userGuildId` is required.","path":"userGuildId","type":"required"}}},"level":"error","message":"Failed to update user 1356652426240852009: User validation failed: userGuildId: Path `userGuildId` is required.","service":"lil-gargs-bot","stack":"ValidationError: User validation failed: userGuildId: Path `userGuildId` is required.\n    at Document.invalidate (C:\\Users\\ElderHorror\\Documents\\GitHub\\Fin_Lil_Gargs_Bot\\lil-garg-bot\\node_modules\\mongoose\\lib\\document.js:3358:32)\n    at C:\\Users\\ElderHorror\\Documents\\GitHub\\Fin_Lil_Gargs_Bot\\lil-garg-bot\\node_modules\\mongoose\\lib\\document.js:3119:17\n    at C:\\Users\\ElderHorror\\Documents\\GitHub\\Fin_Lil_Gargs_Bot\\lil-garg-bot\\node_modules\\mongoose\\lib\\schemaType.js:1410:9\n    at process.processTicksAndRejections (node:internal/process/task_queues:85:11)","timestamp":"2025-10-06 05:43:24"}
+{"_message":"User validation failed","errors":{"userGuildId":{"kind":"required","message":"Path `userGuildId` is required.","name":"ValidatorError","path":"userGuildId","properties":{"message":"Path `userGuildId` is required.","path":"userGuildId","type":"required"}}},"level":"error","message":"Failed to update user 1356652426240852009: User validation failed: userGuildId: Path `userGuildId` is required.","service":"lil-gargs-bot","stack":"ValidationError: User validation failed: userGuildId: Path `userGuildId` is required.\n    at Document.invalidate (C:\\Users\\ElderHorror\\Documents\\GitHub\\Fin_Lil_Gargs_Bot\\lil-garg-bot\\node_modules\\mongoose\\lib\\document.js:3358:32)\n    at C:\\Users\\ElderHorror\\Documents\\GitHub\\Fin_Lil_Gargs_Bot\\lil-garg-bot\\node_modules\\mongoose\\lib\\document.js:3119:17\n    at C:\\Users\\ElderHorror\\Documents\\GitHub\\Fin_Lil_Gargs_Bot\\lil-garg-bot\\node_modules\\mongoose\\lib\\schemaType.js:1410:9\n    at process.processTicksAndRejections (node:internal/process/task_queues:85:11)","timestamp":"2025-10-06 05:43:24"}
+{"level":"info","message":"Scheduled cleanup completed","service":"lil-gargs-bot","timestamp":"2025-10-06 05:43:24"}
+{"level":"info","message":"[verification] Created session 1711b308-d7fa-4716-9832-8138050ad4d2 for discordId=1356652426240852009 guildId=1409680783882457244","service":"lil-gargs-bot","timestamp":"2025-10-06 05:46:09"}
+{"level":"debug","message":"Rate limiter cleanup: removed 1 user limits and 1 command limits","service":"lil-gargs-bot","timestamp":"2025-10-06 05:46:54"}
+{"level":"info","message":"Verifying signed message for 51Aeb6XE819mH7SVSmaejN318uKkehM1W6TBduq1nsjX","service":"lil-gargs-bot","timestamp":"2025-10-06 05:47:43"}
+{"level":"info","message":"Validating Solana address: 51Aeb6XE819mH7SVSmaejN318uKkehM1W6TBduq1nsjX","service":"lil-gargs-bot","timestamp":"2025-10-06 05:47:44"}
+{"level":"info","message":"Address 51Aeb6XE819mH7SVSmaejN318uKkehM1W6TBduq1nsjX is valid","service":"lil-gargs-bot","timestamp":"2025-10-06 05:47:44"}
+{"level":"error","message":"Error fetching NFTs from Helius:","service":"lil-gargs-bot","timestamp":"2025-10-06 05:47:45"}
+{"level":"error","message":"Helius API response:","service":"lil-gargs-bot","timestamp":"2025-10-06 05:47:45"}
+{"level":"error","message":"Error verifying NFT ownership:","service":"lil-gargs-bot","timestamp":"2025-10-06 05:47:45"}
+{"level":"error","message":"[verification] Unexpected error: Failed to fetch NFTs: Request failed with status code 429","service":"lil-gargs-bot","stack":"Error: Failed to fetch NFTs: Request failed with status code 429\n    at NFTVerificationService.getNFTsByOwner (C:\\Users\\ElderHorror\\Documents\\GitHub\\Fin_Lil_Gargs_Bot\\lil-garg-bot\\src\\services\\nftVerification.js:103:13)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async NFTVerificationService.verifyNFTOwnership (C:\\Users\\ElderHorror\\Documents\\GitHub\\Fin_Lil_Gargs_Bot\\lil-garg-bot\\src\\services\\nftVerification.js:185:23)\n    at async VerificationSessionService.verifySession (C:\\Users\\ElderHorror\\Documents\\GitHub\\Fin_Lil_Gargs_Bot\\lil-garg-bot\\src\\services\\verificationSessionService.js:232:32)\n    at async C:\\Users\\ElderHorror\\Documents\\GitHub\\Fin_Lil_Gargs_Bot\\lil-garg-bot\\src\\api\\verificationSessions.js:97:20","timestamp":"2025-10-06 05:47:45"}
+{"level":"info","message":"Performing periodic NFT role check for all verified users...","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:23"}
+{"level":"info","message":"Assigning roles for user elderhorror with wallet BRofRUhr1k9fqcpjncBR3xHPxWNW2tHYfYHFPxtqSbhv","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:23"}
+{"level":"warn","message":"No NFT role tiers configured for guild ElderHorror's server test. Skipping role assignment.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 871635682093830225. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1403906075031371776 not found for user 1331777977003806852. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 710110301185638500. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 852360893504421888. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 924083277864767519. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 402826951665909760. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 1278088885150154764. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 1041701216842944522. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 1340728155425607793. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 755946069807988819. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 896374490689306656. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 1002066138617888778. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 810442804173733889. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 1315937303230677043. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 317414660074897408. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 930440452086300683. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 1047694047453659216. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 493785227790123009. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 1368629440891982058. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 1331777977003806852. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 585364240098000907. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 937008899834404945. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 839480817712365578. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 358394061259800578. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 442686564410064896. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 913228159166607400. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 654503856172040192. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 283441606424526848. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 748065544082554900. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 1269564909004390460. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 1024401385531379722. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 827208861638983771. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 1181145348580839468. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 930374373070737428. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 1006429203803144288. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 392065134480195585. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 800962000653254687. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 913908923533262858. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 280555065075302400. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 892673988843675658. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 1258639196587950084. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 972101608836055070. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 1376557799399493713. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 701581557604810755. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 1119368887956426775. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 926357019173216278. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 1302948688800387160. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 900523014838419468. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 1229004106589405276. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 906091885263732766. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 956499113975902288. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 733945491288621088. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 192009301403893760. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 1248177307097763841. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 553272470145204250. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 1308088188761411587. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 290531269970755587. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 908319323418927124. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 826937393482301450. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 794766926681079819. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 961728037479677962. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 430175276694110218. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 853290818395308042. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 924172110744678460. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 231208184218386433. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 1210923641219317862. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 912818137395773551. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 1046733777193410610. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 1351454991755378768. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 673010169009012736. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 364454087116193792. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 751433327826960403. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 776667871173541909. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 894071624565927946. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 888609718493405204. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 834738495192825866. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 267771503972450325. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"warn","message":"Guild with ID 1339740164469166111 not found for user 802325857053048902. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"info","message":"Periodic NFT role check completed.","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:25"}
+{"level":"info","message":"SIGINT received, shutting down gracefully","service":"lil-gargs-bot","timestamp":"2025-10-06 05:48:44"}
+{"level":"info","message":"Starting scheduled cleanup...","service":"lil-gargs-bot","timestamp":"2025-10-06 06:06:36"}
+{"level":"info","message":"Scheduled cleanup completed","service":"lil-gargs-bot","timestamp":"2025-10-06 06:06:36"}
+{"level":"info","message":"Cleanup manager initialized","service":"lil-gargs-bot","timestamp":"2025-10-06 06:06:36"}
+{"level":"info","message":"MongoDB connected successfully!","service":"lil-gargs-bot","timestamp":"2025-10-06 06:06:41"}
+{"level":"info","message":"Skipped legacy commands: add-nft-contract.js, config-nft-role.js, setup-verification.js, remove-verification.js, set-verification-log-channel.js","service":"lil-gargs-bot","timestamp":"2025-10-06 06:06:41"}
+{"level":"info","message":"Loaded command: add-document","service":"lil-gargs-bot","timestamp":"2025-10-06 06:06:41"}
+{"level":"info","message":"Loaded command: admin","service":"lil-gargs-bot","timestamp":"2025-10-06 06:06:41"}
+{"level":"info","message":"Loaded command: askgarg","service":"lil-gargs-bot","timestamp":"2025-10-06 06:06:41"}
+{"level":"info","message":"Loaded command: battle","service":"lil-gargs-bot","timestamp":"2025-10-06 06:06:41"}
+{"level":"info","message":"Loaded command: chat","service":"lil-gargs-bot","timestamp":"2025-10-06 06:06:41"}
+{"level":"info","message":"Loaded command: cleanup","service":"lil-gargs-bot","timestamp":"2025-10-06 06:06:41"}
+{"level":"info","message":"Loaded command: config","service":"lil-gargs-bot","timestamp":"2025-10-06 06:06:41"}
+{"level":"info","message":"Loaded command: debug-search","service":"lil-gargs-bot","timestamp":"2025-10-06 06:06:41"}
+{"level":"info","message":"Loaded command: garg-info","service":"lil-gargs-bot","timestamp":"2025-10-06 06:06:41"}
+{"level":"info","message":"Loaded command: gargoracle","service":"lil-gargs-bot","timestamp":"2025-10-06 06:06:41"}
+{"level":"info","message":"Loaded command: help","service":"lil-gargs-bot","timestamp":"2025-10-06 06:06:41"}
+{"level":"info","message":"Loaded command: list-documents","service":"lil-gargs-bot","timestamp":"2025-10-06 06:06:41"}
+{"level":"info","message":"Loaded command: lockdown","service":"lil-gargs-bot","timestamp":"2025-10-06 06:06:41"}
+{"level":"info","message":"Loaded command: nft-monitor","service":"lil-gargs-bot","timestamp":"2025-10-06 06:06:41"}
+{"level":"info","message":"Loaded command: pet-maintenance","service":"lil-gargs-bot","timestamp":"2025-10-06 06:06:41"}
+{"level":"info","message":"Loaded command: pet","service":"lil-gargs-bot","timestamp":"2025-10-06 06:06:41"}
+{"level":"info","message":"Loaded command: place-buttons","service":"lil-gargs-bot","timestamp":"2025-10-06 06:06:41"}
+{"level":"info","message":"Loaded command: remove-document","service":"lil-gargs-bot","timestamp":"2025-10-06 06:06:41"}
+{"level":"info","message":"Loaded command: role-add","service":"lil-gargs-bot","timestamp":"2025-10-06 06:06:41"}
+{"level":"info","message":"Loaded command: role-remove","service":"lil-gargs-bot","timestamp":"2025-10-06 06:06:41"}
+{"level":"info","message":"Loaded command: security","service":"lil-gargs-bot","timestamp":"2025-10-06 06:06:41"}
+{"level":"info","message":"Loaded command: status","service":"lil-gargs-bot","timestamp":"2025-10-06 06:06:41"}
+{"level":"info","message":"Loaded command: ticket","service":"lil-gargs-bot","timestamp":"2025-10-06 06:06:41"}
+{"level":"info","message":"Loaded command: unlock","service":"lil-gargs-bot","timestamp":"2025-10-06 06:06:41"}
+{"level":"info","message":"Loaded command: verification-config","service":"lil-gargs-bot","timestamp":"2025-10-06 06:06:41"}
+{"level":"info","message":"Loaded command: verify-nft","service":"lil-gargs-bot","timestamp":"2025-10-06 06:06:41"}
+{"level":"info","message":"Loaded command: verify","service":"lil-gargs-bot","timestamp":"2025-10-06 06:06:41"}
+{"level":"info","message":"Loaded command: welcome","service":"lil-gargs-bot","timestamp":"2025-10-06 06:06:41"}
+{"level":"info","message":"Lil Gargs Bot initialized successfully!","service":"lil-gargs-bot","timestamp":"2025-10-06 06:06:43"}
+{"level":"info","message":"Bot is ready! Logged in as lil-garg#9524","service":"lil-gargs-bot","timestamp":"2025-10-06 06:06:43"}
+{"level":"info","message":"Starting NFT monitoring service...","service":"lil-gargs-bot","timestamp":"2025-10-06 06:06:43"}
+{"level":"info","message":"Starting comprehensive NFT check...","service":"lil-gargs-bot","timestamp":"2025-10-06 06:06:43"}
+{"level":"info","message":"Checking 0 verified users in guild 1403906075031371776","service":"lil-gargs-bot","timestamp":"2025-10-06 06:06:44"}
+{"level":"warn","message":"Guild 1403906075031371776 not found in cache during NFT check. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 06:06:44"}
+{"level":"info","message":"Checking 1 verified users in guild 1404126315577213009","service":"lil-gargs-bot","timestamp":"2025-10-06 06:06:44"}
+{"level":"info","message":"Validating Solana address: BRofRUhr1k9fqcpjncBR3xHPxWNW2tHYfYHFPxtqSbhv","service":"lil-gargs-bot","timestamp":"2025-10-06 06:06:45"}
+{"level":"info","message":"Address BRofRUhr1k9fqcpjncBR3xHPxWNW2tHYfYHFPxtqSbhv is valid","service":"lil-gargs-bot","timestamp":"2025-10-06 06:06:45"}
+{"level":"info","message":"NFT verification for BRofRUhr1k9fqcpjncBR3xHPxWNW2tHYfYHFPxtqSbhv: VERIFIED (1 NFTs)","service":"lil-gargs-bot","timestamp":"2025-10-06 06:06:46"}
+{"level":"info","message":"Assigning roles for user elderhorror with wallet BRofRUhr1k9fqcpjncBR3xHPxWNW2tHYfYHFPxtqSbhv","service":"lil-gargs-bot","timestamp":"2025-10-06 06:06:46"}
+{"level":"warn","message":"No NFT role tiers configured for guild ElderHorror's server test. Skipping role assignment.","service":"lil-gargs-bot","timestamp":"2025-10-06 06:06:49"}
+{"level":"info","message":"Checking 0 verified users in guild 1339740164469166111","service":"lil-gargs-bot","timestamp":"2025-10-06 06:06:50"}
+{"level":"warn","message":"Guild 1339740164469166111 not found in cache during NFT check. Skipping.","service":"lil-gargs-bot","timestamp":"2025-10-06 06:06:50"}
+{"level":"info","message":"Checking 0 verified users in guild 1409680783882457244","service":"lil-gargs-bot","timestamp":"2025-10-06 06:06:50"}
+{"level":"info","message":"NFT check completed: 1 users checked, 0 users updated","service":"lil-gargs-bot","timestamp":"2025-10-06 06:06:50"}
+{"level":"info","message":"NFT monitoring service started successfully","service":"lil-gargs-bot","timestamp":"2025-10-06 06:06:50"}
+{"level":"info","message":"NFT monitoring service started successfully","service":"lil-gargs-bot","timestamp":"2025-10-06 06:06:50"}
+{"level":"info","message":"Starting pet maintenance service...","service":"lil-gargs-bot","timestamp":"2025-10-06 06:06:50"}
+{"level":"info","message":"Starting pet maintenance cycle...","service":"lil-gargs-bot","timestamp":"2025-10-06 06:06:50"}
+{"level":"info","message":"Pet maintenance completed: 0 pets checked, 0 pets updated","service":"lil-gargs-bot","timestamp":"2025-10-06 06:06:50"}
+{"level":"info","message":"Pet maintenance service started successfully","service":"lil-gargs-bot","timestamp":"2025-10-06 06:06:50"}
+{"level":"info","message":"Pet maintenance service started successfully","service":"lil-gargs-bot","timestamp":"2025-10-06 06:06:50"}
+{"level":"info","message":"Starting scheduled cleanup...","service":"lil-gargs-bot","timestamp":"2025-10-06 06:06:50"}
+{"level":"info","message":"Cleanup manager initialized","service":"lil-gargs-bot","timestamp":"2025-10-06 06:06:50"}
+{"level":"info","message":"Cleanup manager started successfully","service":"lil-gargs-bot","timestamp":"2025-10-06 06:06:50"}
+{"level":"info","message":"Scheduled periodic NFT role checks every 300s (testing).","service":"lil-gargs-bot","timestamp":"2025-10-06 06:06:50"}
+{"_message":"User validation failed","errors":{"userGuildId":{"kind":"required","message":"Path `userGuildId` is required.","name":"ValidatorError","path":"userGuildId","properties":{"message":"Path `userGuildId` is required.","path":"userGuildId","type":"required"}}},"level":"error","message":"Failed to update user 1356652426240852009: User validation failed: userGuildId: Path `userGuildId` is required.","service":"lil-gargs-bot","stack":"ValidationError: User validation failed: userGuildId: Path `userGuildId` is required.\n    at Document.invalidate (C:\\Users\\ElderHorror\\Documents\\GitHub\\Fin_Lil_Gargs_Bot\\lil-garg-bot\\node_modules\\mongoose\\lib\\document.js:3358:32)\n    at C:\\Users\\ElderHorror\\Documents\\GitHub\\Fin_Lil_Gargs_Bot\\lil-garg-bot\\node_modules\\mongoose\\lib\\document.js:3119:17\n    at C:\\Users\\ElderHorror\\Documents\\GitHub\\Fin_Lil_Gargs_Bot\\lil-garg-bot\\node_modules\\mongoose\\lib\\schemaType.js:1410:9\n    at process.processTicksAndRejections (node:internal/process/task_queues:85:11)","timestamp":"2025-10-06 06:06:51"}
+{"_message":"User validation failed","errors":{"userGuildId":{"kind":"required","message":"Path `userGuildId` is required.","name":"ValidatorError","path":"userGuildId","properties":{"message":"Path `userGuildId` is required.","path":"userGuildId","type":"required"}}},"level":"error","message":"Failed to update user 1356652426240852009: User validation failed: userGuildId: Path `userGuildId` is required.","service":"lil-gargs-bot","stack":"ValidationError: User validation failed: userGuildId: Path `userGuildId` is required.\n    at Document.invalidate (C:\\Users\\ElderHorror\\Documents\\GitHub\\Fin_Lil_Gargs_Bot\\lil-garg-bot\\node_modules\\mongoose\\lib\\document.js:3358:32)\n    at C:\\Users\\ElderHorror\\Documents\\GitHub\\Fin_Lil_Gargs_Bot\\lil-garg-bot\\node_modules\\mongoose\\lib\\document.js:3119:17\n    at C:\\Users\\ElderHorror\\Documents\\GitHub\\Fin_Lil_Gargs_Bot\\lil-garg-bot\\node_modules\\mongoose\\lib\\schemaType.js:1410:9\n    at process.processTicksAndRejections (node:internal/process/task_queues:85:11)","timestamp":"2025-10-06 06:06:52"}
+{"level":"info","message":"Scheduled cleanup completed","service":"lil-gargs-bot","timestamp":"2025-10-06 06:06:52"}
+{"level":"info","message":"[verification] Created session 7a6d5935-5ad4-4943-8a28-93fbf2672ce7 for discordId=1356652426240852009 guildId=1409680783882457244","service":"lil-gargs-bot","timestamp":"2025-10-06 06:08:05"}
+{"level":"debug","message":"Rate limiter cleanup: removed 1 user limits and 1 command limits","service":"lil-gargs-bot","timestamp":"2025-10-06 06:09:34"}
+{"level":"info","message":"Verifying signed message for ABjnax7QfDmG6wR2KJoNc3UyiouwTEZ3b5tnTrLLyNSp","service":"lil-gargs-bot","timestamp":"2025-10-06 06:10:04"}
+{"level":"info","message":"Validating Solana address: ABjnax7QfDmG6wR2KJoNc3UyiouwTEZ3b5tnTrLLyNSp","service":"lil-gargs-bot","timestamp":"2025-10-06 06:10:05"}
+{"level":"info","message":"Address ABjnax7QfDmG6wR2KJoNc3UyiouwTEZ3b5tnTrLLyNSp is valid","service":"lil-gargs-bot","timestamp":"2025-10-06 06:10:05"}
+{"level":"info","message":"NFT verification for ABjnax7QfDmG6wR2KJoNc3UyiouwTEZ3b5tnTrLLyNSp: NOT VERIFIED (0 NFTs)","service":"lil-gargs-bot","timestamp":"2025-10-06 06:10:05"}
+{"level":"info","message":"SIGINT received, shutting down gracefully","service":"lil-gargs-bot","timestamp":"2025-10-06 06:11:15"}
