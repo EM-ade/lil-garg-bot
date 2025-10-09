@@ -26,8 +26,9 @@ class ButtonHandler {
                     await this.handlePetButtons(interaction);
                 } else if (customId.startsWith('battle_')) {
                     await this.handleBattleButtons(interaction);
-                } else if (customId.startsWith('ticket_')) {
-                    await this.handleTicketButtons(interaction);
+                // Ticket buttons are now handled in index.js handleTicketButton method
+                // } else if (customId.startsWith('ticket_')) {
+                //     await this.handleTicketButtons(interaction);
                 } else if (customId.startsWith('admin_')) {
                     await this.handleAdminButtons(interaction);
                 } else if (customId.startsWith('welcome_')) {

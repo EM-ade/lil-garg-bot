@@ -2,6 +2,59 @@ const { SlashCommandBuilder, EmbedBuilder, ButtonBuilder, ButtonStyle, ActionRow
 const { Ticket, BotConfig } = require("../database/models");
 const logger = require("../utils/logger");
 
+const PRIORITY_META = {
+  low: { label: "Low", emoji: "🟢", color: "#2ECC71" },
+  medium: { label: "Medium", emoji: "🟡", color: "#F1C40F" },
+  high: { label: "High", emoji: "🟠", color: "#E67E22" },
+  urgent: { label: "Critical", emoji: "🔴", color: "#E74C3C" },
+};
+
+const STATUS_META = {
+  open: { label: "Open", emoji: "🟢" },
+  in_progress: { label: "In Progress", emoji: "🔧" },
+  waiting: { label: "Waiting", emoji: "⏳" },
+  resolved: { label: "Resolved", emoji: "✅" },
+  closed: { label: "Closed", emoji: "⚫" },
+};
+
+const CATEGORY_LABELS = {
+  general: "General",
+  support: "Support",
+  bug: "Bug Report",
+  feature: "Feature Request",
+  billing: "Billing",
+  other: "Other",
+};
+
+const DEFAULT_EMBED_COLOR = "#5865F2";
+
+function formatPriority(priority) {
+  return PRIORITY_META[priority] || PRIORITY_META.medium;
+}
+
+function formatStatus(status) {
+  return STATUS_META[status] || STATUS_META.open;
+}
+
+function getCategoryLabel(category) {
+  return CATEGORY_LABELS[category] || "General";
+}
+
+function getRelativeTimestamp(date) {
+  if (!date) {
+    return "Unknown";
+  }
+  const unix = Math.floor(new Date(date).getTime() / 1000);
+  return `<t:${unix}:R>`;
+}
+
+function getShortTicketId(ticketId) {
+  if (!ticketId) {
+    return "UNKNOWN";
+  }
+  return ticketId.slice(-6).toUpperCase();
+}
+
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("ticket")
@@ -225,16 +278,36 @@ module.exports = {
 
     await ticket.save();
 
-    // Send initial message in ticket channel
-    const embed = this.createTicketEmbed(ticket, "🎫 Ticket Created");
-    embed.setDescription(`**${interaction.user.username}** has created a new ticket.\n\n**Subject:** ${subject}\n**Description:** ${description}\n**Category:** ${category}\n**Priority:** ${priority}`);
+    const ticketEmbed = this.createTicketEmbed({
+      ticket,
+      guild: interaction.guild,
+      createdBy: interaction.user,
+    });
 
-    const buttons = this.createTicketButtons(ticket._id);
-    await ticketChannel.send({ embeds: [embed], components: [buttons] });
+    const components = this.createTicketButtons(ticket._id);
 
-    // Confirm to user
+    // Notify staff roles
+    let staffMentions = "";
+    if (botConfig?.ticketSystem?.staffRoleIds && botConfig.ticketSystem.staffRoleIds.length > 0) {
+      staffMentions = botConfig.ticketSystem.staffRoleIds.map(roleId => `<@&${roleId}>`).join(" ");
+    } else {
+      const adminRole = interaction.guild.roles.cache.find(role =>
+        role.name.toLowerCase() === "admin" || role.permissions.has(PermissionFlagsBits.Administrator)
+      );
+      if (adminRole) {
+        staffMentions = `<@&${adminRole.id}>`;
+      }
+    }
+
+    await ticketChannel.send({
+      content: staffMentions ? `${staffMentions} New ticket created.` : null,
+      embeds: [ticketEmbed],
+      components,
+    });
+
+    // Acknowledge to user with summary
     await interaction.reply({
-      content: `✅ Ticket created successfully! Check out ${ticketChannel}`,
+      embeds: [this.createTicketConfirmationEmbed(ticket, ticketChannel)],
       ephemeral: true,
     });
 
@@ -265,7 +338,7 @@ module.exports = {
     const botConfig = await BotConfig.findOne({ guildId });
     const isStaff = botConfig?.ticketSystem?.staffRoleIds?.some(roleId => 
       interaction.member.roles.cache.has(roleId)
-    );
+    ) || interaction.member.permissions.has('Administrator');
     const isCreator = ticket.creator.id === userId;
 
     if (!isStaff && !isCreator) {
@@ -311,22 +384,14 @@ module.exports = {
     }
 
     const embed = new EmbedBuilder()
-      .setColor("#FF6B35")
+      .setColor(DEFAULT_EMBED_COLOR)
       .setTitle("🎫 Your Tickets")
       .setDescription(`You have ${tickets.length} ticket(s)`);
 
     tickets.slice(0, 10).forEach(ticket => {
-      const statusEmoji = {
-        open: "🟢",
-        in_progress: "🟡",
-        waiting: "🟠",
-        resolved: "🔵",
-        closed: "⚫"
-      };
-
       embed.addFields({
-        name: `${statusEmoji[ticket.status]} ${ticket.subject}`,
-        value: `**ID:** ${ticket.ticketId}\n**Status:** ${ticket.status}\n**Category:** ${ticket.category}\n**Priority:** ${ticket.priority}\n**Created:** ${ticket.createdAt.toLocaleDateString()}`,
+        name: `${formatStatus(ticket.status).emoji} ${ticket.subject}`,
+        value: `**ID:** ${ticket.ticketId}\n**Status:** ${formatStatus(ticket.status).label}\n**Category:** ${getCategoryLabel(ticket.category)}\n**Priority:** ${formatPriority(ticket.priority).emoji} ${formatPriority(ticket.priority).label}\n**Created:** ${getRelativeTimestamp(ticket.createdAt)}`,
         inline: false,
       });
     });
@@ -343,7 +408,7 @@ module.exports = {
     const botConfig = await BotConfig.findOne({ guildId });
     const isStaff = botConfig?.ticketSystem?.staffRoleIds?.some(roleId => 
       interaction.member.roles.cache.has(roleId)
-    );
+    ) || interaction.member.permissions.has('Administrator');
 
     if (!isStaff) {
       return await interaction.reply({
@@ -415,7 +480,7 @@ module.exports = {
     const botConfig = await BotConfig.findOne({ guildId });
     const isStaff = botConfig?.ticketSystem?.staffRoleIds?.some(roleId => 
       interaction.member.roles.cache.has(roleId)
-    );
+    ) || interaction.member.permissions.has('Administrator');
 
     if (!isStaff) {
       return await interaction.reply({
@@ -454,10 +519,21 @@ module.exports = {
     try {
       const channel = interaction.guild.channels.cache.get(ticket.channelId);
       if (channel) {
+        const statusMeta = formatStatus(newStatus);
+        const priorityMeta = formatPriority(ticket.priority);
+
         const statusEmbed = new EmbedBuilder()
-          .setColor("#FF6B35")
-          .setTitle("📊 Status Updated")
-          .setDescription(`Ticket status has been updated to: **${newStatus}**\nUpdated by: ${interaction.user.username}`)
+          .setColor(priorityMeta.color)
+          .setAuthor({
+            name: `${interaction.guild.name} • Ticket Update`,
+            iconURL: interaction.guild.iconURL() ?? undefined,
+          })
+          .setTitle(`${statusMeta.emoji} Status Updated`)
+          .addFields(
+            { name: "Ticket", value: `#${getShortTicketId(ticket.ticketId)}`, inline: true },
+            { name: "New Status", value: `${statusMeta.emoji} ${statusMeta.label}`, inline: true },
+            { name: "Updated By", value: `<@${interaction.user.id}>`, inline: true },
+          )
           .setTimestamp();
 
         await channel.send({ embeds: [statusEmbed] });
@@ -467,70 +543,87 @@ module.exports = {
     }
 
     await interaction.reply({
-      content: `✅ Ticket ${ticket.ticketId} status updated to: ${newStatus}`,
+      embeds: [
+        new EmbedBuilder()
+          .setColor(priorityMeta.color)
+          .setDescription(`✅ Status updated to **${statusMeta.label}** for ticket #${getShortTicketId(ticket.ticketId)}.`)
+          .setTimestamp(),
+      ],
       ephemeral: true,
     });
   },
 
-  createTicketEmbed(ticket, title) {
-    const statusEmoji = {
-      open: "🟢",
-      in_progress: "🟡",
-      waiting: "🟠",
-      resolved: "🔵",
-      closed: "⚫"
-    };
+  createTicketEmbed({ ticket, guild, createdBy }) {
+    const priorityMeta = formatPriority(ticket.priority);
+    const statusMeta = formatStatus(ticket.status);
 
-    const priorityEmoji = {
-      low: "🟢",
-      medium: "🟡",
-      high: "🟠",
-      urgent: "🔴"
-    };
-
-    const embed = new EmbedBuilder()
-      .setColor("#FF6B35")
-      .setTitle(title)
+    return new EmbedBuilder()
+      .setColor(priorityMeta.color)
+      .setAuthor({
+        name: `${guild.name} • Support Ticket`,
+        iconURL: guild.iconURL() ?? undefined,
+      })
+      .setTitle(`Ticket #${getShortTicketId(ticket.ticketId)} • ${ticket.subject}`)
+      .setDescription(ticket.description || "*No description provided.*")
       .addFields(
-        { name: "🎫 Ticket ID", value: ticket.ticketId, inline: true },
-        { name: "📋 Subject", value: ticket.subject, inline: true },
-        { name: "🏷️ Category", value: ticket.category, inline: true },
-        { name: "⚡ Priority", value: `${priorityEmoji[ticket.priority]} ${ticket.priority}`, inline: true },
-        { name: "📊 Status", value: `${statusEmoji[ticket.status]} ${ticket.status}`, inline: true },
-        { name: "👤 Creator", value: ticket.creator.username, inline: true }
+        { name: "Status", value: `${statusMeta.emoji} ${statusMeta.label}`, inline: true },
+        { name: "Priority", value: `${priorityMeta.emoji} ${priorityMeta.label}`, inline: true },
+        { name: "Category", value: getCategoryLabel(ticket.category), inline: true },
+        { name: "Created", value: getRelativeTimestamp(ticket.createdAt), inline: true },
+        { name: "Created By", value: `<@${createdBy.id}>`, inline: true },
+        {
+          name: "Assigned",
+          value: ticket.assignedTo?.id ? `<@${ticket.assignedTo.id}>` : "Unassigned",
+          inline: true,
+        },
       )
-      .setFooter({ text: `Created: ${ticket.createdAt.toLocaleDateString()}` })
+      .setTimestamp(ticket.createdAt)
+      .setFooter({ text: "Use the buttons below to manage this ticket." });
+  },
+
+  createTicketConfirmationEmbed(ticket, channel) {
+    const priorityMeta = formatPriority(ticket.priority);
+
+    return new EmbedBuilder()
+      .setColor(DEFAULT_EMBED_COLOR)
+      .setTitle("Ticket Created")
+      .setDescription(`Channel: ${channel}`)
+      .addFields(
+        { name: "Subject", value: ticket.subject, inline: true },
+        {
+          name: "Priority",
+          value: `${priorityMeta.emoji} ${priorityMeta.label}`,
+          inline: true,
+        },
+        { name: "Reference ID", value: ticket.ticketId },
+      )
       .setTimestamp();
-
-    if (ticket.description) {
-      embed.addFields({
-        name: "📝 Description",
-        value: ticket.description,
-        inline: false,
-      });
-    }
-
-    return embed;
   },
 
   createTicketButtons(ticketId) {
-    return new ActionRowBuilder()
-      .addComponents(
+    return [
+      new ActionRowBuilder().addComponents(
         new ButtonBuilder()
           .setCustomId(`ticket_close_${ticketId}`)
           .setLabel("Close Ticket")
-          .setStyle(ButtonStyle.Danger)
-          .setEmoji("🔒"),
+          .setEmoji("🔒")
+          .setStyle(ButtonStyle.Danger),
         new ButtonBuilder()
           .setCustomId(`ticket_assign_${ticketId}`)
-          .setLabel("Assign to Staff")
-          .setStyle(ButtonStyle.Primary)
-          .setEmoji("👤"),
+          .setLabel("Assign Self")
+          .setEmoji("🙋")
+          .setStyle(ButtonStyle.Primary),
         new ButtonBuilder()
           .setCustomId(`ticket_status_${ticketId}`)
           .setLabel("Update Status")
+          .setEmoji("📌")
+          .setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder()
+          .setCustomId(`ticket_transcript_${ticketId}`)
+          .setLabel("Request Transcript")
+          .setEmoji("🧾")
           .setStyle(ButtonStyle.Secondary)
-          .setEmoji("��")
-      );
-  }
+      ),
+    ];
+  },
 };

@@ -137,15 +137,15 @@ class NFTVerificationService {
         
         allNFTs = allNFTs.concat(items);
         
+        logger.info(`Fetched page ${page} for wallet ${walletAddress}: ${items.length} items (total so far: ${allNFTs.length})`);
+        
         // Check if there are more pages
-        // Helius API returns total and page info in the result
-        const total = result.total || 0;
-        const currentCount = page * limit;
-        hasMore = items.length === limit && currentCount < total;
+        // Continue if we got a full page (1000 items), indicating there might be more
+        hasMore = items.length === limit;
         
         if (hasMore) {
           page++;
-          logger.info(`Fetching page ${page} for wallet ${walletAddress} (${allNFTs.length} NFTs so far)`);
+          logger.info(`Fetching page ${page} for wallet ${walletAddress}...`);
           // Add a small delay between pages to avoid rate limiting
           await new Promise(resolve => setTimeout(resolve, 200));
         }
@@ -237,17 +237,62 @@ class NFTVerificationService {
   }
 
   /**
-   * Get lil-gargs NFTs owned by a wallet
+   * Get lil-gargs NFTs owned by a wallet using searchAssets (more efficient)
    */
   async getLilGargsNFTs(walletAddress) {
     try {
-      const allNFTs = await this.getNFTsByOwner(walletAddress);
-      logger.info(`Fetched ${allNFTs.length} total NFTs for wallet ${walletAddress}`);
+      let allNFTs = [];
+      let page = 1;
+      const limit = 1000;
 
-      const lilGargsNFTs = allNFTs.filter((nft) => this.matchesDefaultConfig(nft));
-      logger.info(`Found ${lilGargsNFTs.length} matching Lil Gargs NFTs out of ${allNFTs.length} total NFTs`);
+      while (true) {
+        const fetchNFTs = async () => {
+          const response = await axios.post(
+            this.rpcUrl,
+            {
+              jsonrpc: "2.0",
+              id: "nft-verification",
+              method: "searchAssets",
+              params: {
+                ownerAddress: walletAddress,
+                grouping: ["collection", this.contractAddress],
+                page: page,
+                limit: limit,
+              },
+            },
+            {
+              headers: {
+                "Content-Type": "application/json",
+              },
+            }
+          );
 
-      return lilGargsNFTs.map((nft) => ({
+          if (response.data.error) {
+            throw new Error(response.data.error.message || "Helius API error");
+          }
+
+          return response.data.result || {};
+        };
+
+        const result = await this.retryWithBackoff(fetchNFTs);
+        const items = result.items || [];
+        
+        allNFTs = allNFTs.concat(items);
+        
+        logger.info(`Fetched page ${page} for Lil Gargs collection: ${items.length} items (total so far: ${allNFTs.length})`);
+        
+        // Continue if we got a full page
+        if (items.length === limit) {
+          page++;
+          await new Promise(resolve => setTimeout(resolve, 200));
+        } else {
+          break;
+        }
+      }
+
+      logger.info(`Found ${allNFTs.length} Lil Gargs NFTs for wallet ${walletAddress}`);
+
+      return allNFTs.map((nft) => ({
         mint: nft.id,
         name: nft.content?.metadata?.name || "Unknown Lil Garg",
         image: nft.content?.links?.image || nft.content?.files?.[0]?.uri,

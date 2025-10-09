@@ -219,9 +219,10 @@ class LilGargsBot {
               ephemeral: true,
             });
           }
+        } else if (interaction.customId.startsWith('ticket_')) {
+          // Handle ticket button interactions
+          await this.handleTicketButton(interaction);
         }
-        // You can add more button handlers here if needed
-        // else if (interaction.customId === 'another_button') { /* ... */ }
       }
     });
 
@@ -521,6 +522,142 @@ class LilGargsBot {
   getRandomPersonality() {
     const personalities = ["Brave", "Curious", "Loyal", "Playful"];
     return personalities[Math.floor(Math.random() * personalities.length)];
+  }
+
+  async handleTicketButton(interaction) {
+    try {
+      logger.info(`[Ticket Button] Handling button: ${interaction.customId}, replied: ${interaction.replied}, deferred: ${interaction.deferred}`);
+      
+      // Check if interaction is already acknowledged
+      if (!interaction.replied && !interaction.deferred) {
+        await interaction.deferReply({ ephemeral: false });
+        logger.info(`[Ticket Button] Deferred reply successfully`);
+      } else {
+        logger.warn(`[Ticket Button] Interaction already acknowledged - replied: ${interaction.replied}, deferred: ${interaction.deferred}`);
+      }
+
+      const { Ticket, BotConfig } = require("./database/models");
+      // customId format: ticket_ACTION_TICKETID
+      const parts = interaction.customId.split('_');
+      const action = parts[1]; // 'close', 'assign', or 'status'
+      const ticketId = parts[2]; // the MongoDB _id
+      
+      logger.info(`[Ticket Button] Action: ${action}, TicketId: ${ticketId}`);
+      
+      const ticket = await Ticket.findById(ticketId);
+      if (!ticket) {
+        return await interaction.editReply({
+          content: "❌ Ticket not found.",
+        });
+      }
+
+      const botConfig = await BotConfig.findOne({ guildId: interaction.guild.id });
+      const isStaff = botConfig?.ticketSystem?.staffRoleIds?.some(roleId => 
+        interaction.member.roles.cache.has(roleId)
+      ) || interaction.member.permissions.has('Administrator');
+      
+      const isCreator = ticket.creator.id === interaction.user.id;
+
+      switch (action) {
+        case 'close':
+          if (!isStaff && !isCreator) {
+            return await interaction.editReply({
+              content: "❌ You don't have permission to close this ticket.",
+            });
+          }
+
+          const closedBy = {
+            id: interaction.user.id,
+            username: interaction.user.username,
+          };
+
+          await ticket.closeTicket(closedBy);
+
+          await interaction.editReply({
+            content: `✅ Ticket ${ticket.ticketId} has been closed. This channel will be deleted in 5 seconds.`,
+          });
+
+          setTimeout(async () => {
+            try {
+              await interaction.guild.channels.delete(ticket.channelId);
+            } catch (error) {
+              logger.error("Error deleting ticket channel:", error);
+            }
+          }, 5000);
+          break;
+
+        case 'assign':
+          if (!isStaff) {
+            return await interaction.editReply({
+              content: "❌ Only staff can assign tickets.",
+            });
+          }
+
+          await ticket.assignStaff(interaction.user.id, interaction.user.username);
+
+          const { EmbedBuilder } = require("discord.js");
+          const assignEmbed = new EmbedBuilder()
+            .setColor("#FF6B35")
+            .setTitle("👤 Ticket Assigned")
+            .setDescription(`This ticket has been assigned to ${interaction.user.username}`)
+            .setTimestamp();
+
+          await interaction.editReply({ embeds: [assignEmbed] });
+          break;
+
+        case 'status':
+          if (!isStaff) {
+            return await interaction.editReply({
+              content: "❌ Only staff can update ticket status.",
+            });
+          }
+
+          await interaction.editReply({
+            content: "Use `/ticket status` command to update the ticket status.",
+          });
+          break;
+
+        case 'transcript':
+          if (!isStaff) {
+            return await interaction.editReply({
+              content: "❌ Only staff can request ticket transcripts.",
+            });
+          }
+
+          await interaction.editReply({
+            content: "📄 Transcript feature coming soon. Please export messages manually for now.",
+          });
+          break;
+
+        default:
+          await interaction.editReply({
+            content: "❌ Unknown ticket action.",
+          });
+      }
+    } catch (error) {
+      logger.error(`[Ticket Button] Error handling ticket button:`, {
+        error: error.message,
+        stack: error.stack,
+        customId: interaction.customId,
+        replied: interaction.replied,
+        deferred: interaction.deferred
+      });
+      
+      try {
+        if (interaction.deferred && !interaction.replied) {
+          await interaction.editReply({
+            content: "❌ An error occurred while processing your request.",
+          });
+        } else if (!interaction.replied && !interaction.deferred) {
+          await interaction.reply({
+            content: "❌ An error occurred while processing your request.",
+            ephemeral: true,
+          });
+        }
+      } catch (replyError) {
+        logger.error(`[Ticket Button] Failed to send error message:`, replyError.message);
+      }
+    }
   }
 
   async handleNewMember(member) {
