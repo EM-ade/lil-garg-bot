@@ -220,14 +220,14 @@ async function buildVerificationEmbed(client, session, verification) {
       },
       {
         name: 'NFTs Detected',
-        value: verification.nftCount.toString(),
+        value: String(verification.nftCount || 0),
         inline: true,
       },
       {
         name: 'Server',
-        value: guildName ?? session.guildId,
+        value: guildName || session.guildId || 'Unknown Server',
         inline: true,
-      },
+      }
     )
     .setFooter({ text: 'Lil Gargs Verification Portal' })
     .setTimestamp(new Date(verification.verifiedAt ?? Date.now()));
