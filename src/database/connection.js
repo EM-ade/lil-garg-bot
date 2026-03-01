@@ -31,22 +31,20 @@ const connectDB = async () => {
       )}s)`
     );
     logger.info("MongoDB connected successfully!");
+    global.mongodbConnected = true;
   } catch (error) {
     const errorTime = new Date();
-    console.error(
-      `[${errorTime.toISOString()}] [DB Connection] MongoDB connection error:`,
-      error
+    console.warn(
+      `[${errorTime.toISOString()}] [DB Connection] MongoDB connection failed (non-fatal). Continuing without MongoDB. Error:`,
+      error.message
     );
-    console.error(
+    console.warn(
       `[${errorTime.toISOString()}] [DB Connection] Detailed error:`,
       error.message
     );
-    console.error(
-      `[${errorTime.toISOString()}] [DB Connection] Error stack:`,
-      error.stack
-    );
-    logger.error("MongoDB connection error:", error);
-    process.exit(1); // Exit process with failure
+    logger.warn("MongoDB connection failed. Continuing without MongoDB.", error);
+    global.mongodbConnected = false;
+    // Do not exit process; allow bot to start without MongoDB
   }
 };
 

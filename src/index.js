@@ -777,19 +777,40 @@ const corsFromEnv = (process.env.CORS_ALLOWED_ORIGINS || '')
   .map((origin) => origin.trim())
   .filter(Boolean);
 
+// Add IP-based origins for direct access
+const ipOrigins = [
+  'http://2.56.246.119:30391',
+  'http://2.56.246.119:3001',
+  'http://localhost:30391',
+];
+
 const allowedOrigins = Array.from(
   new Set([
     ...corsFromEnv,
     config?.frontend?.url || 'http://localhost:5173',
     'http://localhost:5173',
+    ...ipOrigins,
   ]),
 );
 
 const corsOptions = {
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
+    // Allow requests with no origin (mobile apps, curl, etc.)
+    if (!origin) {
       return callback(null, true);
     }
+    
+    // Check if origin is in allowed list
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    
+    // Allow IP addresses with any port in development
+    const ipPattern = /^https?:\/\/\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/;
+    if (ipPattern.test(origin)) {
+      return callback(null, true);
+    }
+    
     return callback(new Error(`Not allowed by CORS: ${origin}`));
   },
   credentials: true,
@@ -811,8 +832,10 @@ let discordClient = null;
 
 // Start the Express server
 const PORT = process.env.API_PORT || 3001;
-app.listen(PORT, () => {
-  console.log(`[${new Date().toISOString()}] [API] Server running on port ${PORT}`);
+const HOST = process.env.API_HOST || '0.0.0.0'; // Listen on all network interfaces
+app.listen(PORT, HOST, () => {
+  console.log(`[${new Date().toISOString()}] [API] Server running on ${HOST}:${PORT}`);
+  console.log(`[${new Date().toISOString()}] [API] Accessible at http://2.56.246.119:${PORT}`);
 });
 
 // Function to set the Discord client once the bot is ready

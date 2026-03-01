@@ -3,6 +3,7 @@ const { PublicKey } = require("@solana/web3.js");
 const config = require("../config/environment");
 const logger = require("../utils/logger");
 const BotConfig = require('../database/models/BotConfig');
+const heliusRateLimiter = require("../utils/heliusRateLimiter");
 
 class NFTVerificationService {
   constructor(client) {
@@ -54,15 +55,17 @@ class NFTVerificationService {
   }
 
   /**
-   * Retry helper with exponential backoff
+   * Retry helper with exponential backoff for Helius API calls.
+   * Increased defaults: maxRetries = 5, baseDelay = 2000ms.
+   * Includes jitter up to 1000ms to avoid thundering herd.
    */
-  async retryWithBackoff(fn, maxRetries = 3, baseDelay = 1000) {
+  async retryWithBackoff(fn, maxRetries = 5, baseDelay = 2000) {
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
         return await fn();
       } catch (error) {
-        const isRateLimitError = 
-          error.response?.status === 429 || 
+        const isRateLimitError =
+          error.response?.status === 429 ||
           error.message?.includes('429');
         
         const isLastAttempt = attempt === maxRetries;
@@ -72,7 +75,7 @@ class NFTVerificationService {
         }
         
         const delay = baseDelay * Math.pow(2, attempt);
-        const jitter = Math.random() * 500;
+        const jitter = Math.random() * 1000; // Increased jitter up to 1 second
         const totalDelay = delay + jitter;
         
         logger.warn(
@@ -83,6 +86,28 @@ class NFTVerificationService {
         await new Promise(resolve => setTimeout(resolve, totalDelay));
       }
     }
+  }
+
+  /**
+   * Make a rate-limited Helius API call
+   */
+  async callHeliusApi(method, params) {
+    const payload = {
+      jsonrpc: "2.0",
+      id: "nft-verification",
+      method,
+      params,
+    };
+    const call = async () => {
+      const response = await axios.post(this.rpcUrl, payload, {
+        headers: { "Content-Type": "application/json" },
+      });
+      if (response.data.error) {
+        throw new Error(response.data.error.message || "Helius API error");
+      }
+      return response.data.result || {};
+    };
+    return await heliusRateLimiter.limit(call);
   }
 
   /**
@@ -101,35 +126,16 @@ class NFTVerificationService {
 
       while (hasMore) {
         const fetchNFTs = async () => {
-          const response = await axios.post(
-            this.rpcUrl,
-            {
-              jsonrpc: "2.0",
-              id: "nft-verification",
-              method: "getAssetsByOwner",
-              params: {
-                ownerAddress: walletAddress,
-                page: page,
-                limit: limit,
-                displayOptions: {
-                  showFungible: false,
-                  showNativeBalance: false,
-                  showInscription: false,
-                },
-              },
+          return await this.callHeliusApi("getAssetsByOwner", {
+            ownerAddress: walletAddress,
+            page: page,
+            limit: limit,
+            displayOptions: {
+              showFungible: false,
+              showNativeBalance: false,
+              showInscription: false,
             },
-            {
-              headers: {
-                "Content-Type": "application/json",
-              },
-            }
-          );
-
-          if (response.data.error) {
-            throw new Error(response.data.error.message || "Helius API error");
-          }
-
-          return response.data.result || {};
+          });
         };
 
         const result = await this.retryWithBackoff(fetchNFTs);
@@ -247,31 +253,12 @@ class NFTVerificationService {
 
       while (true) {
         const fetchNFTs = async () => {
-          const response = await axios.post(
-            this.rpcUrl,
-            {
-              jsonrpc: "2.0",
-              id: "nft-verification",
-              method: "searchAssets",
-              params: {
-                ownerAddress: walletAddress,
-                grouping: ["collection", this.contractAddress],
-                page: page,
-                limit: limit,
-              },
-            },
-            {
-              headers: {
-                "Content-Type": "application/json",
-              },
-            }
-          );
-
-          if (response.data.error) {
-            throw new Error(response.data.error.message || "Helius API error");
-          }
-
-          return response.data.result || {};
+          return await this.callHeliusApi("searchAssets", {
+            ownerAddress: walletAddress,
+            grouping: ["collection", this.contractAddress],
+            page: page,
+            limit: limit,
+          });
         };
 
         const result = await this.retryWithBackoff(fetchNFTs);
@@ -408,28 +395,9 @@ class NFTVerificationService {
       }
 
       const fetchDetails = async () => {
-        const response = await axios.post(
-          this.rpcUrl,
-          {
-            jsonrpc: "2.0",
-            id: "nft-details",
-            method: "getAsset",
-            params: {
-              id: mintAddress,
-            },
-          },
-          {
-            headers: {
-              "Content-Type": "application/json",
-            },
-          }
-        );
-
-        if (response.data.error) {
-          throw new Error(response.data.error.message || "Helius API error");
-        }
-
-        return response.data.result;
+        return await this.callHeliusApi("getAsset", {
+          id: mintAddress,
+        });
       };
 
       return await this.retryWithBackoff(fetchDetails);
