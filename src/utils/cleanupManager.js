@@ -162,8 +162,10 @@ class CleanupManager {
             const cutoffDate = new Date();
             cutoffDate.setDate(cutoffDate.getDate() - 30); // 30 days ago
 
-            // Find users with old verification data
+            // Find users with old verification data in this specific guild
+            // Must filter by guildId to ensure userGuildId is properly scoped
             const oldUsers = await User.find({
+                guildId: guild.id,
                 lastVerificationCheck: { $lt: cutoffDate },
                 isVerified: true
             });
@@ -171,9 +173,15 @@ class CleanupManager {
             let updatedUsers = 0;
             for (const user of oldUsers) {
                 try {
+                    // Skip users without userGuildId (will be handled by migration script)
+                    if (!user.userGuildId) {
+                        logger.warn(`Skipping user ${user.discordId} - missing userGuildId (run migration script)`);
+                        continue;
+                    }
+
                     // Mark for reverification
                     user.isVerified = false;
-                    user.verificationExpiresAt = new Date();
+                    user.lastVerificationCheck = new Date();
                     await user.save();
                     updatedUsers++;
                 } catch (error) {
@@ -183,10 +191,10 @@ class CleanupManager {
 
             if (updatedUsers > 0) {
                 logger.info(`Marked ${updatedUsers} users for reverification in ${guild.name}`);
-                
+
                 // Log cleanup to mod-log if available
                 if (botConfig.logChannelId) {
-                    await this.logCleanupAction(guild, botConfig.logChannelId, 'Verification Cleanup', 
+                    await this.logCleanupAction(guild, botConfig.logChannelId, 'Verification Cleanup',
                         `Marked ${updatedUsers} users for reverification`);
                 }
             }

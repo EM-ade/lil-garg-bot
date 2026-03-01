@@ -2,6 +2,7 @@ const { Connection, PublicKey, Transaction, SystemProgram, Keypair } = require('
 const axios = require('axios');
 const logger = require('../utils/logger');
 const config = require('../config/environment');
+const heliusRateLimiter = require("../utils/heliusRateLimiter");
 
 class SolanaConnectionService {
     constructor() {
@@ -12,6 +13,29 @@ class SolanaConnectionService {
 
         this.connection = new Connection(rpcUrl);
         this.heliusApiKey = config.nft?.heliusApiKey;
+        this.rpcUrl = `https://mainnet.helius-rpc.com/?api-key=${this.heliusApiKey}`;
+    }
+
+    /**
+     * Make a rate-limited Helius API call
+     */
+    async callHeliusApi(method, params) {
+        const payload = {
+            jsonrpc: "2.0",
+            id: "nft-verification",
+            method,
+            params,
+        };
+        const call = async () => {
+            const response = await axios.post(this.rpcUrl, payload, {
+                headers: { "Content-Type": "application/json" },
+            });
+            if (response.data.error) {
+                throw new Error(response.data.error.message || "Helius API error");
+            }
+            return response.data.result || {};
+        };
+        return await heliusRateLimiter.limit(call);
     }
 
     /**
@@ -72,35 +96,17 @@ class SolanaConnectionService {
      */
     async getNFTsByOwner(walletAddress) {
         try {
-            const response = await axios.post(
-                `https://mainnet.helius-rpc.com/?api-key=${this.heliusApiKey}`,
-                {
-                    jsonrpc: "2.0",
-                    id: "nft-verification",
-                    method: "getAssetsByOwner",
-                    params: {
-                        ownerAddress: walletAddress,
-                        page: 1,
-                        limit: 1000,
-                        displayOptions: {
-                            showFungible: false,
-                            showNativeBalance: false,
-                            showInscription: false,
-                        },
-                    },
+            const result = await this.callHeliusApi("getAssetsByOwner", {
+                ownerAddress: walletAddress,
+                page: 1,
+                limit: 1000,
+                displayOptions: {
+                    showFungible: false,
+                    showNativeBalance: false,
+                    showInscription: false,
                 },
-                {
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                }
-            );
-
-            if (response.data.error) {
-                throw new Error(response.data.error.message || "Helius API error");
-            }
-
-            return response.data.result?.items || [];
+            });
+            return result?.items || [];
         } catch (error) {
             logger.error("Error fetching NFTs from Helius:", error.message);
             if (error.response) {
