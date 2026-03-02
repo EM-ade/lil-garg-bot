@@ -771,46 +771,31 @@ Welcome to the family! 🎊`;
 // Set up Express server for API routes
 const app = express();
 const cors = require('cors');
+const https = require('https');
+const fs = require('fs');
+const path = require('path');
 
 const corsFromEnv = (process.env.CORS_ALLOWED_ORIGINS || '')
   .split(',')
   .map((origin) => origin.trim())
   .filter(Boolean);
 
-// Add IP-based origins for direct access
-const ipOrigins = [
-  'http://2.56.246.119:30391',
-  'http://2.56.246.119:3001',
-  'http://localhost:30391',
-];
-
+// Update allowed origins to include HTTPS
 const allowedOrigins = Array.from(
   new Set([
     ...corsFromEnv,
     config?.frontend?.url || 'http://localhost:5173',
     'http://localhost:5173',
-    ...ipOrigins,
+    'https://lilgarg.xyz',  // Add HTTPS frontend
+    'https://2.56.246.119', // Add HTTPS backend IP
   ]),
 );
 
 const corsOptions = {
   origin: (origin, callback) => {
-    // Allow requests with no origin (mobile apps, curl, etc.)
-    if (!origin) {
+    if (!origin || allowedOrigins.includes(origin)) {
       return callback(null, true);
     }
-    
-    // Check if origin is in allowed list
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
-    
-    // Allow IP addresses with any port in development
-    const ipPattern = /^https?:\/\/\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/;
-    if (ipPattern.test(origin)) {
-      return callback(null, true);
-    }
-    
     return callback(new Error(`Not allowed by CORS: ${origin}`));
   },
   credentials: true,
@@ -830,12 +815,26 @@ app.use("/api", verificationSessionsRouter);
 // Make Discord client available to API routes
 let discordClient = null;
 
-// Start the Express server
-const PORT = process.env.API_PORT || 3001;
-const HOST = process.env.API_HOST || '0.0.0.0'; // Listen on all network interfaces
-app.listen(PORT, HOST, () => {
-  console.log(`[${new Date().toISOString()}] [API] Server running on ${HOST}:${PORT}`);
-  console.log(`[${new Date().toISOString()}] [API] Accessible at http://2.56.246.119:${PORT}`);
+// Start BOTH HTTP and HTTPS servers
+const HTTP_PORT = process.env.API_PORT || 3001;
+const HTTPS_PORT = 8443; // Use custom HTTPS port
+
+// Load SSL certificates
+const sslOptions = {
+    key: fs.readFileSync(path.join(__dirname, '../server.key')),
+    cert: fs.readFileSync(path.join(__dirname, '../server.crt'))
+};
+
+// Start HTTPS server
+const httpsServer = https.createServer(sslOptions, app);
+httpsServer.listen(HTTPS_PORT, () => {
+  console.log(`[${new Date().toISOString()}] [API] HTTPS Server running on port ${HTTPS_PORT}`);
+  console.log(`[${new Date().toISOString()}] [API] HTTPS URL: https://2.56.246.119:${HTTPS_PORT}`);
+});
+
+// Start HTTP server (keep for backward compatibility)
+app.listen(HTTP_PORT, () => {
+  console.log(`[${new Date().toISOString()}] [API] HTTP Server running on port ${HTTP_PORT}`);
 });
 
 // Function to set the Discord client once the bot is ready
