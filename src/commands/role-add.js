@@ -15,7 +15,7 @@ module.exports = {
         .setRequired(true))
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
   async execute(interaction) {
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: 64 });
 
     const targetUser = interaction.options.getMember('user');
     const targetRole = interaction.options.getRole('role');

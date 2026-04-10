@@ -3,90 +3,74 @@ const fs = require("fs");
 const path = require("path");
 require("dotenv").config();
 
-const commands = [];
+const clientId = process.env.DISCORD_CLIENT_ID || Buffer.from(process.env.DISCORD_BOT_TOKEN.split(".")[0], "base64").toString("ascii");
+
+const rest = new REST().setToken(process.env.DISCORD_BOT_TOKEN);
+
 const commandsPath = path.join(__dirname, "commands");
 const deprecatedCommandFiles = new Set([
   "add-nft-contract.js",
   "config-nft-role.js",
-  "setup-verification.js",
   "remove-verification.js",
   "set-verification-log-channel.js",
+  "setup-verification.js",
 ]);
 
 const commandFiles = fs
   .readdirSync(commandsPath)
   .filter((file) => file.endsWith(".js") && !deprecatedCommandFiles.has(file));
 
-const skippedCommands = Array.from(deprecatedCommandFiles).filter((file) =>
-  fs.existsSync(path.join(commandsPath, file))
-);
-
-if (skippedCommands.length > 0) {
-  console.log(
-    `Skipping legacy verification commands: ${skippedCommands.join(', ')}`
-  );
-}
-
-// Load all command data
+const commands = [];
 for (const file of commandFiles) {
-  const filePath = path.join(commandsPath, file);
-  const command = require(filePath);
+  const command = require(path.join(commandsPath, file));
   if ("data" in command && "execute" in command) {
     commands.push(command.data.toJSON());
-    console.log(`Loaded command: ${command.data.name}`);
-  } else {
-    console.log(
-      `[WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`
-    );
+    console.log(`✅ Loaded: /${command.data.name}`);
   }
 }
 
-// Construct and prepare an instance of the REST module
-const rest = new REST().setToken(process.env.DISCORD_BOT_TOKEN);
-
-// Deploy commands
 (async () => {
   try {
-    console.log(
-      `Started refreshing ${commands.length} application (/) commands.`
-    );
+    // Step 1: Delete ALL guild-specific commands (these cause duplicates)
+    console.log(`\n🧹 Step 1: Cleaning up guild-specific commands...`);
 
-    // Get client ID from environment or extract from bot token
-    let clientId = process.env.DISCORD_CLIENT_ID;
+    const guildIds = [
+      process.env.DISCORD_SERVER_ID,
+      process.env.GUILD_ID,
+    ].filter(Boolean);
 
-    if (!clientId && process.env.DISCORD_BOT_TOKEN) {
-      // Extract client ID from bot token (first part before the first dot)
-      clientId = process.env.DISCORD_BOT_TOKEN.split(".")[0];
-      // Decode base64 to get the actual client ID
+    for (const guildId of guildIds) {
       try {
-        clientId = Buffer.from(clientId, "base64").toString("ascii");
-      } catch (e) {
-        console.error(
-          "Could not extract client ID from bot token. Please set DISCORD_CLIENT_ID in your .env file."
-        );
-        process.exit(1);
+        const guildCommands = await rest.get(Routes.applicationGuildCommands(clientId, guildId));
+        console.log(`   Found ${guildCommands.length} guild commands in ${guildId}`);
+        if (guildCommands.length > 0) {
+          await rest.put(Routes.applicationGuildCommands(clientId, guildId), { body: [] });
+          console.log(`   ✅ Deleted all guild commands in ${guildId}`);
+        }
+      } catch (err) {
+        console.log(`   ⚠️ Could not clean guild ${guildId}: ${err.message}`);
       }
     }
 
-    if (!clientId) {
-      console.error(
-        "DISCORD_CLIENT_ID is required. Please add it to your .env file."
-      );
-      console.error(
-        "You can find your Client ID in the Discord Developer Portal under your application's General Information."
-      );
-      process.exit(1);
+    // Step 2: Deploy global commands (replaces all global commands)
+    console.log(`\n🚀 Step 2: Deploying ${commands.length} global commands...`);
+
+    const data = await rest.put(Routes.applicationCommands(clientId), { body: commands });
+    console.log(`✅ Deployed ${data.length} commands:`);
+    data.forEach(cmd => console.log(`   • /${cmd.name}`));
+
+    // Step 3: Verify no guild commands remain
+    console.log(`\n🔍 Step 3: Verifying no duplicates...`);
+    for (const guildId of guildIds) {
+      try {
+        const remaining = await rest.get(Routes.applicationGuildCommands(clientId, guildId));
+        console.log(`   Guild ${guildId}: ${remaining.length} commands (should be 0)`);
+      } catch (err) { }
     }
 
-    // The put method is used to fully refresh all commands in the guild with the current set
-    const data = await rest.put(Routes.applicationCommands(clientId), {
-      body: commands,
-    });
-
-    console.log(
-      `Successfully reloaded ${data.length} application (/) commands.`
-    );
+    console.log("\n✨ Done! No more duplicates.\n");
   } catch (error) {
-    console.error("Error deploying commands:", error);
+    console.error("❌ Error:", error);
+    process.exit(1);
   }
 })();

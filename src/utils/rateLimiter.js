@@ -105,7 +105,7 @@ class RateLimiter {
             logger.warn(`Global rate limit exceeded for command ${commandName}`);
             await interaction.reply({
                 content: '⚠️ This command is currently experiencing high usage. Please try again in a moment.',
-                ephemeral: true
+                flags: 64
             });
             return false;
         }
@@ -119,7 +119,7 @@ class RateLimiter {
             
             await interaction.reply({
                 content: `⏰ You're using this command too frequently. Please wait ${resetSeconds} seconds before trying again.`,
-                ephemeral: true
+                flags: 64
             });
             return false;
         }

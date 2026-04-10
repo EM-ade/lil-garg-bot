@@ -12,12 +12,12 @@ module.exports = {
             if (!interaction.member.permissions.has('Administrator')) {
                 return await interaction.reply({
                     content: '❌ You need administrator permissions to remove verification.',
-                    ephemeral: true
+                    flags: 64
                 });
             }
 
             // Defer the reply
-            await interaction.deferReply({ ephemeral: true });
+            await interaction.deferReply({ flags: 64 });
 
             // Get the current configuration
             const botConfig = await BotConfig.findOne({ guildId: interaction.guild.id });
@@ -76,7 +76,7 @@ module.exports = {
                 try {
                     await interaction.followUp({
                         content: '❌ An error occurred while removing the verification system. Please try again later.',
-                        ephemeral: true
+                        flags: 64
                     });
                 } catch (followUpError) {
                     console.error('Failed to send follow-up message:', followUpError);

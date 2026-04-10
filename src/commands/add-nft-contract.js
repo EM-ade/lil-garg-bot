@@ -29,7 +29,7 @@ module.exports = {
         if (!interaction.member.permissions.has('ADMINISTRATOR')) {
             return await interaction.reply({
                 content: '❌ You do not have permission to use this command.',
-                ephemeral: true
+                flags: 64
             });
         }
 
@@ -42,7 +42,7 @@ module.exports = {
         if (!contractAddress.startsWith('0x') || contractAddress.length !== 42) {
             return await interaction.reply({
                 content: '❌ Invalid contract address format. Must be a valid Ethereum address.',
-                ephemeral: true
+                flags: 64
             });
         }
 
@@ -71,13 +71,13 @@ module.exports = {
                          `Contract: \`${contractAddress}\`\n` +
                          `Role: ${roleName}\n` +
                          `Min Holding: ${minHolding}`,
-                ephemeral: true
+                flags: 64
             });
         } catch (error) {
             console.error('Error writing to nftConfig.js:', error);
             await interaction.reply({
                 content: '❌ Failed to update NFT configuration. Please try again.',
-                ephemeral: true
+                flags: 64
             });
         }
     }

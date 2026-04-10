@@ -99,7 +99,7 @@ module.exports = {
         ),
 
     async execute(interaction) {
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: 64 });
 
         try {
             const subcommand = interaction.options.getSubcommand();
@@ -123,14 +123,14 @@ module.exports = {
                 default:
                     await interaction.editReply({
                         content: '❌ Unknown subcommand.',
-                        ephemeral: true
+                        flags: 64
                     });
             }
         } catch (error) {
             logger.error('Error in admin command:', error);
             await interaction.editReply({
                 content: '❌ An error occurred while processing the admin command.',
-                ephemeral: true
+                flags: 64
             });
         }
     },
@@ -145,14 +145,14 @@ module.exports = {
             if (targetUser.id === interaction.user.id) {
                 return await interaction.editReply({
                     content: '❌ You cannot ban yourself.',
-                    ephemeral: true
+                    flags: 64
                 });
             }
 
             if (targetUser.id === interaction.guild.ownerId) {
                 return await interaction.editReply({
                     content: '❌ You cannot ban the server owner.',
-                    ephemeral: true
+                    flags: 64
                 });
             }
 
@@ -160,7 +160,7 @@ module.exports = {
             if (targetMember && !targetMember.bannable) {
                 return await interaction.editReply({
                     content: '❌ I cannot ban this user. They may have higher permissions than me.',
-                    ephemeral: true
+                    flags: 64
                 });
             }
 
@@ -212,7 +212,7 @@ module.exports = {
             logger.error('Error banning user:', error);
             await interaction.editReply({
                 content: '❌ Failed to ban user. Please check my permissions and try again.',
-                ephemeral: true
+                flags: 64
             });
         }
     },
@@ -226,14 +226,14 @@ module.exports = {
             if (targetUser.id === interaction.user.id) {
                 return await interaction.editReply({
                     content: '❌ You cannot kick yourself.',
-                    ephemeral: true
+                    flags: 64
                 });
             }
 
             if (targetUser.id === interaction.guild.ownerId) {
                 return await interaction.editReply({
                     content: '❌ You cannot kick the server owner.',
-                    ephemeral: true
+                    flags: 64
                 });
             }
 
@@ -241,7 +241,7 @@ module.exports = {
             if (targetMember && !targetMember.kickable) {
                 return await interaction.editReply({
                     content: '❌ I cannot kick this user. They may have higher permissions than me.',
-                    ephemeral: true
+                    flags: 64
                 });
             }
 
@@ -285,7 +285,7 @@ module.exports = {
             logger.error('Error kicking user:', error);
             await interaction.editReply({
                 content: '❌ Failed to kick user. Please check my permissions and try again.',
-                ephemeral: true
+                flags: 64
             });
         }
     },
@@ -300,14 +300,14 @@ module.exports = {
             if (targetUser.id === interaction.user.id) {
                 return await interaction.editReply({
                     content: '❌ You cannot timeout yourself.',
-                    ephemeral: true
+                    flags: 64
                 });
             }
 
             if (targetUser.id === interaction.guild.ownerId) {
                 return await interaction.editReply({
                     content: '❌ You cannot timeout the server owner.',
-                    ephemeral: true
+                    flags: 64
                 });
             }
 
@@ -315,7 +315,7 @@ module.exports = {
             if (targetMember && !targetMember.moderatable) {
                 return await interaction.editReply({
                     content: '❌ I cannot timeout this user. They may have higher permissions than me.',
-                    ephemeral: true
+                    flags: 64
                 });
             }
 
@@ -367,7 +367,7 @@ module.exports = {
             logger.error('Error timing out user:', error);
             await interaction.editReply({
                 content: '❌ Failed to timeout user. Please check my permissions and try again.',
-                ephemeral: true
+                flags: 64
             });
         }
     },
@@ -381,7 +381,7 @@ module.exports = {
             if (interaction.channel.type !== 0) {
                 return await interaction.editReply({
                     content: '❌ This command can only be used in text channels.',
-                    ephemeral: true
+                    flags: 64
                 });
             }
 
@@ -438,7 +438,7 @@ module.exports = {
             logger.error('Error purging messages:', error);
             await interaction.editReply({
                 content: '❌ Failed to purge messages. Messages older than 14 days cannot be deleted.',
-                ephemeral: true
+                flags: 64
             });
         }
     },
@@ -451,7 +451,7 @@ module.exports = {
             if (interaction.channel.type !== 0) {
                 return await interaction.editReply({
                     content: '❌ This command can only be used in text channels.',
-                    ephemeral: true
+                    flags: 64
                 });
             }
 
@@ -493,7 +493,7 @@ module.exports = {
             logger.error('Error setting slowmode:', error);
             await interaction.editReply({
                 content: '❌ Failed to set slowmode. Please check my permissions and try again.',
-                ephemeral: true
+                flags: 64
             });
         }
     },

@@ -26,7 +26,7 @@ module.exports = {
         .setDescription('Check your verification status and bot statistics'),
 
     async execute(interaction) {
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: 64 });
 
         try {
             const userId = interaction.user.id;
@@ -142,10 +142,8 @@ module.exports = {
             const hasAdminPermission = await roleManager.hasAdminPermissions(guild, userId);
             if (hasAdminPermission && botConfig) {
                 let configText = '';
-                configText += `🔧 **NFT Verification:** ${botConfig.nftVerification?.enabled !== false ? 'Enabled' : 'Disabled'}\n`;
                 configText += `🤖 **AI Chat:** ${botConfig.aiChat?.enabled !== false ? 'Enabled' : 'Disabled'}\n`;
-                configText += `🎭 **Auto Role Assignment:** ${botConfig.nftVerification?.autoRoleAssignment !== false ? 'Enabled' : 'Disabled'}\n`;
-                
+
                 if (botConfig.verifiedRoleId) {
                     const role = guild.roles.cache.get(botConfig.verifiedRoleId);
                     configText += `👑 **Verified Role:** ${role ? role.name : 'Role not found'}\n`;
@@ -201,7 +199,7 @@ module.exports = {
                             value: 'Use the button below to open the verification portal and complete your NFT verification.',
                             inline: false,
                         });
-                        await interaction.editReply({ embeds: [embed, sessionEmbed], components, ephemeral: true });
+                        await interaction.editReply({ embeds: [embed, sessionEmbed], components, flags: 64 });
                         logger.info(`Status triggered verification session for user ${userId}`);
                         return;
                     }

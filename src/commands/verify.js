@@ -21,17 +21,17 @@ const userStore = getUserStore();
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('verify')
-        .setDescription('Verify your Lil Gargs NFT ownership')
+        .setDescription('Start NFT verification to get your Discord role')
         .addStringOption(option =>
             option.setName('wallet')
-                .setDescription('Your Solana wallet address')
-                .setRequired(true)),
+                .setDescription('Your Solana wallet address (optional)')
+                .setRequired(false)),
 
     async execute(interaction) {
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: 64 });
 
         try {
-            const walletAddress = interaction.options.getString('wallet');
+            let walletAddress = interaction.options.getString('wallet');
             const userId = interaction.user.id;
             const username = interaction.user.username;
             const guild = interaction.guild;
@@ -40,8 +40,8 @@ module.exports = {
             const nftService = new NFTVerificationService();
             const roleManager = new RoleManager(interaction.client);
 
-            // Validate wallet address
-            if (!nftService.isValidSolanaAddress(walletAddress)) {
+            // If wallet not provided, will be collected during verification flow
+            if (walletAddress && !nftService.isValidSolanaAddress(walletAddress)) {
                 return await interaction.editReply({
                     content: '❌ Invalid Solana wallet address. Please provide a valid wallet address.',
                 });

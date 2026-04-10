@@ -207,7 +207,7 @@ async function handleUnauthorizedLink(message, action, securityManager) {
     if (action === 'warn') {
       const warning = await message.channel.send({
           content: warningMessageContent,
-          ephemeral: true
+          flags: 64
       });
       setTimeout(() => { warning.delete().catch(() => {}); }, 10000); // Auto-delete warning
     } else if (action === 'timeout') {
@@ -215,7 +215,7 @@ async function handleUnauthorizedLink(message, action, securityManager) {
       warningMessageContent += ' You have been timed out for 10 minutes.';
         const warning = await message.channel.send({
           content: warningMessageContent,
-          ephemeral: true
+          flags: 64
       });
       setTimeout(() => { warning.delete().catch(() => {}); }, 10000); // Auto-delete warning
     }

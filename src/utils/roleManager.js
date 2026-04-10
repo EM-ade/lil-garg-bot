@@ -20,7 +20,6 @@ function normalizeBotConfig(record) {
             ...data,
             adminRoleIds: data.adminRoleIds || [],
             moderatorRoleIds: data.moderatorRoleIds || [],
-            nftVerification: data.nftVerification || data.settings?.nftVerification || {},
             settings: data.settings || {},
             stats: data.stats || {},
         };
@@ -30,11 +29,10 @@ function normalizeBotConfig(record) {
     return {
         guildId: record.guild_id,
         guildName: record.guild_name,
-        verifiedRoleId: settings.nftVerification?.verifiedRoleId || record.verified_role_id || null,
-        verifiedRoleName: settings.nftVerification?.verifiedRoleName || record.verified_role_name || null,
+        verifiedRoleId: record.verified_role_id || null,
+        verifiedRoleName: record.verified_role_name || null,
         adminRoleIds: settings.adminRoleIds || [],
         moderatorRoleIds: settings.moderatorRoleIds || [],
-        nftVerification: settings.nftVerification || {},
         settings,
         stats: record.stats || {},
     };
@@ -310,7 +308,7 @@ class RoleManager {
     async getUserVerificationStatus(guild, userId) {
         try {
             const botConfig = await fetchBotConfig(guild.id);
-            const roleName = botConfig?.nftVerification?.verifiedRoleName || botConfig?.verifiedRoleName || 'Lil Gargs Holder';
+            const roleName = botConfig?.verifiedRoleName || 'Lil Gargs Holder';
 
             let user;
             if (isSupabaseEnabled()) {
@@ -358,7 +356,7 @@ class RoleManager {
         try {
             const status = await this.getUserVerificationStatus(guild, userId);
             const botConfig = await fetchBotConfig(guild.id);
-            const roleName = botConfig?.nftVerification?.verifiedRoleName || botConfig?.verifiedRoleName || 'Lil Gargs Holder';
+            const roleName = botConfig?.verifiedRoleName || 'Lil Gargs Holder';
 
             if (status.isVerified && !status.hasRole) {
                 // User is verified but doesn't have role - assign it

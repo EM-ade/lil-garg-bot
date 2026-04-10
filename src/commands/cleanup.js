@@ -66,7 +66,7 @@ module.exports = {
       logger.error(`Error in cleanup command (${subcommand}):`, error);
       await interaction.reply({
         content: "❌ An error occurred while processing your request.",
-        ephemeral: true,
+        flags: 64,
       });
     }
   },
@@ -88,7 +88,7 @@ module.exports = {
     };
 
     try {
-      await interaction.deferReply({ ephemeral: true });
+      await interaction.deferReply({ flags: 64 });
 
       // Create cleanup manager instance
       const cleanupManager = new CleanupManager(interaction.client);
@@ -117,14 +117,14 @@ module.exports = {
       logger.error("Error during manual cleanup:", error);
       await interaction.editReply({
         content: "❌ An error occurred during cleanup. Please check the logs.",
-        ephemeral: true
+        flags: 64
       });
     }
   },
 
   async handleShowStats(interaction) {
     try {
-      await interaction.deferReply({ ephemeral: true });
+      await interaction.deferReply({ flags: 64 });
 
       // Create cleanup manager instance
       const cleanupManager = new CleanupManager(interaction.client);
@@ -157,7 +157,7 @@ module.exports = {
       logger.error("Error getting cleanup stats:", error);
       await interaction.editReply({
         content: "❌ An error occurred while fetching statistics.",
-        ephemeral: true
+        flags: 64
       });
     }
   },
@@ -183,12 +183,12 @@ module.exports = {
         .setFooter({ text: "Cleanup system helps maintain server performance and data hygiene" })
         .setTimestamp();
 
-      await interaction.reply({ embeds: [embed], ephemeral: true });
+      await interaction.reply({ embeds: [embed], flags: 64 });
     } catch (error) {
       logger.error("Error showing cleanup schedule:", error);
       await interaction.reply({
         content: "❌ An error occurred while showing schedule information.",
-        ephemeral: true
+        flags: 64
       });
     }
   }

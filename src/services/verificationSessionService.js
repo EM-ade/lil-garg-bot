@@ -233,6 +233,7 @@ class VerificationSessionService {
       walletAddress,
       {
         contractAddresses: ruleContracts,
+        guildId: activeSession.guild_id,  // Pass guild for per-guild Helius key
       }
     );
 

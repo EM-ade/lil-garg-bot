@@ -51,24 +51,49 @@ class NFTMonitoringService {
   async runNFTCheck() {
     try {
       logger.info('Starting comprehensive NFT check...');
-      
-      // Get all guilds with NFT verification enabled
-      // This assumes nftVerification.enabled and autoRoleAssignment are fields in BotConfig
-      const guildConfigs = await BotConfig.find({
-        'nftVerification.enabled': true,
-        'nftVerification.autoRoleAssignment': true // Assuming this field exists and is true for auto checks
-      });
+
+      // Get all guilds that have verification rules configured
+      const { getGuildVerificationConfigStore } = require('./serviceFactory');
+      const guildVerificationConfigStore = getGuildVerificationConfigStore();
+
+      if (!guildVerificationConfigStore) {
+        logger.warn('No guild verification config store available. Skipping NFT check.');
+        return;
+      }
+
+      // Get all unique guild IDs that have verification rules AND periodic checks enabled
+      const allRules = await guildVerificationConfigStore.listAll();
+      const guildSettingsMap = new Map();
+
+      for (const rule of allRules) {
+        if (!guildSettingsMap.has(rule.guildId)) {
+          guildSettingsMap.set(rule.guildId, {
+            periodicCheckEnabled: rule.periodicCheckEnabled !== false,
+            periodicCheckIntervalMinutes: rule.periodicCheckIntervalMinutes || 360,
+          });
+        }
+      }
+
+      // Only check guilds with periodic checks enabled
+      const guildIds = [...guildSettingsMap.entries()]
+        .filter(([, settings]) => settings.periodicCheckEnabled)
+        .map(([guildId]) => guildId);
+
+      if (guildIds.length === 0) {
+        logger.info('No guilds with periodic checks enabled. Skipping NFT check.');
+        return;
+      }
 
       let totalUsersChecked = 0;
       let totalUsersUpdated = 0;
 
-      for (const config of guildConfigs) {
+      for (const guildId of guildIds) {
         try {
-          const { usersChecked, usersUpdated } = await this.checkGuildNFTs(config);
+          const { usersChecked, usersUpdated } = await this.checkGuildNFTs(guildId);
           totalUsersChecked += usersChecked;
           totalUsersUpdated += usersUpdated;
         } catch (error) {
-          logger.error(`Error checking guild ${config.guildId}:`, error);
+          logger.error(`Error checking guild ${guildId}:`, error);
         }
       }
 
@@ -81,8 +106,7 @@ class NFTMonitoringService {
   /**
    * Check NFTs for a specific guild
    */
-  async checkGuildNFTs(guildConfig) {
-    const guildId = guildConfig.guildId;
+  async checkGuildNFTs(guildId) {
     let usersChecked = 0;
     let usersUpdated = 0;
 
@@ -115,7 +139,7 @@ class NFTMonitoringService {
               continue; // Skip to next user if member not found
           }
 
-          const wasUpdated = await this.checkUserNFTs(userProfile, member);
+          const wasUpdated = await this.checkUserNFTs(userProfile, member, guildId);
           if (wasUpdated) {
             usersUpdated++;
           }
@@ -140,12 +164,12 @@ class NFTMonitoringService {
    * Check NFTs for a specific user and update roles if needed
    * Modified to receive the Discord member object directly.
    */
-  async checkUserNFTs(userProfile, member) {
+  async checkUserNFTs(userProfile, member, guildId) {
     try {
       // Get current NFT holdings using the dedicated NFTVerificationService
-      // Note: If you have multiple collections, you'd iterate through them here
-      // For this mock, we assume a single 'lil_gargs_collection_id' for verification
-      const verificationResult = await this.nftService.verifyNFTOwnership(userProfile.walletAddress);
+      const verificationResult = await this.nftService.verifyNFTOwnership(userProfile.walletAddress, {
+        guildId,
+      });
       const currentNFTCount = verificationResult.nftCount;
       const currentNFTs = verificationResult.nfts;
 
@@ -231,7 +255,7 @@ class NFTMonitoringService {
         throw new Error('Discord member not found in the guild.');
       }
 
-      const wasUpdated = await this.checkUserNFTs(userProfile, member);
+      const wasUpdated = await this.checkUserNFTs(userProfile, member, guildId);
       
       return {
         success: true,

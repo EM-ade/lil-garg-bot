@@ -65,42 +65,6 @@ const botConfigSchema = new mongoose.Schema(
       default: null,
     },
 
-    // NFT verification settings
-    nftVerification: {
-      enabled: {
-        type: Boolean,
-        default: true,
-      },
-      requireMinimumNFTs: {
-        type: Number,
-        default: 1,
-      },
-      autoRoleAssignment: {
-        type: Boolean,
-        default: true,
-      },
-      reverificationInterval: {
-        type: Number,
-        default: 24 * 60 * 60 * 1000, // 24 hours in milliseconds
-      },
-      roleTiers: [
-        {
-          nftCount: {
-            type: Number,
-            required: true,
-          },
-          roleId: {
-            type: String,
-            required: true,
-          },
-          roleName: {
-            type: String,
-            required: true,
-          },
-        },
-      ],
-    },
-
     // AI chat settings
     aiChat: {
       enabled: {

@@ -129,7 +129,7 @@ module.exports = {
       if (interaction.replied || interaction.deferred) {
         await interaction.editReply({ embeds: [embed] });
       } else {
-        await interaction.reply({ embeds: [embed], ephemeral: true });
+        await interaction.reply({ embeds: [embed], flags: 64 });
       }
     }
   }

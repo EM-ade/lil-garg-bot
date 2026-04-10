@@ -180,7 +180,7 @@ module.exports = {
       if (!botConfig?.ticketSystem?.enabled) {
         return await interaction.reply({
           content: "❌ Ticket system is not enabled in this server.",
-          ephemeral: true,
+          flags: 64,
         });
       }
 
@@ -205,7 +205,7 @@ module.exports = {
       logger.error(`Error in ticket command (${subcommand}):`, error);
       await interaction.reply({
         content: "❌ An error occurred while processing your request.",
-        ephemeral: true,
+        flags: 64,
       });
     }
   },
@@ -222,7 +222,7 @@ module.exports = {
     if (userTicketCount >= (botConfig?.ticketSystem?.maxTicketsPerUser || 3)) {
       return await interaction.reply({
         content: "❌ You have reached the maximum number of open tickets. Please close some before creating new ones.",
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -256,7 +256,7 @@ module.exports = {
       logger.error("Error creating ticket channel:", error);
       return await interaction.reply({
         content: "❌ Failed to create ticket channel. Please try again later.",
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -308,7 +308,7 @@ module.exports = {
     // Acknowledge to user with summary
     await interaction.reply({
       embeds: [this.createTicketConfirmationEmbed(ticket, ticketChannel)],
-      ephemeral: true,
+      flags: 64,
     });
 
     // Log ticket creation
@@ -330,7 +330,7 @@ module.exports = {
     if (!ticket) {
       return await interaction.reply({
         content: "❌ No ticket found in this channel or with the specified ID.",
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -344,7 +344,7 @@ module.exports = {
     if (!isStaff && !isCreator) {
       return await interaction.reply({
         content: "❌ You don't have permission to close this ticket.",
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -366,7 +366,7 @@ module.exports = {
     // Confirm closure
     await interaction.reply({
       content: `✅ Ticket ${ticket.ticketId} has been closed.`,
-      ephemeral: true,
+      flags: 64,
     });
 
     // Log ticket closure
@@ -379,7 +379,7 @@ module.exports = {
     if (tickets.length === 0) {
       return await interaction.reply({
         content: "❌ You don't have any tickets.",
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -400,7 +400,7 @@ module.exports = {
       embed.setFooter({ text: `Showing 10 of ${tickets.length} tickets` });
     }
 
-    await interaction.reply({ embeds: [embed], ephemeral: true });
+    await interaction.reply({ embeds: [embed], flags: 64 });
   },
 
   async handleAssign(interaction, userId, guildId) {
@@ -413,7 +413,7 @@ module.exports = {
     if (!isStaff) {
       return await interaction.reply({
         content: "❌ You don't have permission to assign tickets.",
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -424,14 +424,14 @@ module.exports = {
     if (!ticket) {
       return await interaction.reply({
         content: "❌ Ticket not found.",
-        ephemeral: true,
+        flags: 64,
       });
     }
 
     if (ticket.status === "closed") {
       return await interaction.reply({
         content: "❌ Cannot assign a closed ticket.",
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -471,7 +471,7 @@ module.exports = {
 
     await interaction.reply({
       content: `✅ Ticket ${ticket.ticketId} has been assigned to ${staffMember.username}.`,
-      ephemeral: true,
+      flags: 64,
     });
   },
 
@@ -485,7 +485,7 @@ module.exports = {
     if (!isStaff) {
       return await interaction.reply({
         content: "❌ You don't have permission to update ticket status.",
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -496,14 +496,14 @@ module.exports = {
     if (!ticket) {
       return await interaction.reply({
         content: "❌ Ticket not found.",
-        ephemeral: true,
+        flags: 64,
       });
     }
 
     if (ticket.status === "closed") {
       return await interaction.reply({
         content: "❌ Cannot update status of a closed ticket.",
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -549,7 +549,7 @@ module.exports = {
           .setDescription(`✅ Status updated to **${statusMeta.label}** for ticket #${getShortTicketId(ticket.ticketId)}.`)
           .setTimestamp(),
       ],
-      ephemeral: true,
+      flags: 64,
     });
   },
 

@@ -97,7 +97,7 @@ module.exports = {
           logger.error('Error processing AI chat mention/reply:', error);
           await message.reply({
             content: "❌ I encountered an error while processing your question. Please try again later.",
-            ephemeral: true
+            flags: 64
           });
         }
       }

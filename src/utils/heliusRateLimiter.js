@@ -2,56 +2,91 @@ const logger = require('./logger');
 
 /**
  * Token bucket rate limiter for Helius API calls.
- * Default configuration: 1 request per second, burst up to 5 requests.
- * This helps avoid hitting Helius API rate limits (429 errors).
- * Adjust the parameters based on your Helius plan limits.
+ * Each API key gets its own independent bucket, so one busy server
+ * cannot starve another server's requests.
  */
 class HeliusRateLimiter {
-    constructor(requestsPerSecond = 1, burst = 5) {
-        this.requestsPerSecond = requestsPerSecond;
-        this.tokens = burst;
-        this.maxTokens = burst;
-        this.lastRefill = Date.now();
-        this.refillInterval = 1000 / requestsPerSecond; // ms per token
-        this.queue = [];
-        this.processing = false;
-    }
+  constructor(requestsPerSecond = 1, burst = 5) {
+    this.requestsPerSecond = requestsPerSecond;
+    this.burst = burst;
+    this.buckets = new Map(); // key -> { tokens, lastRefill }
+    this.defaultKey = '_global_';
+  }
 
-    refillTokens() {
-        const now = Date.now();
-        const elapsed = now - this.lastRefill;
-        if (elapsed > this.refillInterval) {
-            const newTokens = Math.floor(elapsed / this.refillInterval);
-            this.tokens = Math.min(this.maxTokens, this.tokens + newTokens);
-            this.lastRefill = now;
-        }
+  /**
+   * Get or create a token bucket for the given API key.
+   */
+  _getBucket(apiKey) {
+    const key = apiKey || this.defaultKey;
+    if (!this.buckets.has(key)) {
+      this.buckets.set(key, {
+        tokens: this.burst,
+        lastRefill: Date.now(),
+      });
     }
+    return this.buckets.get(key);
+  }
 
-    async acquireToken() {
-        return new Promise((resolve) => {
-            this.refillTokens();
-            if (this.tokens > 0) {
-                this.tokens--;
-                resolve();
-                return;
-            }
-            // No tokens available, calculate delay until next token
-            const delay = this.refillInterval - (Date.now() - this.lastRefill);
-            setTimeout(() => {
-                this.refillTokens();
-                this.tokens--;
-                resolve();
-            }, delay);
-        });
+  _refillTokens(bucket) {
+    const now = Date.now();
+    const elapsed = now - bucket.lastRefill;
+    const refillMs = 1000 / this.requestsPerSecond;
+    if (elapsed > refillMs) {
+      const newTokens = Math.floor(elapsed / refillMs);
+      bucket.tokens = Math.min(this.burst, bucket.tokens + newTokens);
+      bucket.lastRefill = now;
     }
+  }
 
-    async limit(fn) {
-        await this.acquireToken();
-        return fn();
-    }
+  /**
+   * Acquire a token for the given API key.
+   * Returns immediately if a token is available, otherwise waits.
+   */
+  async acquireToken(apiKey) {
+    return new Promise((resolve) => {
+      const bucket = this._getBucket(apiKey);
+      this._refillTokens(bucket);
+
+      if (bucket.tokens > 0) {
+        bucket.tokens--;
+        resolve();
+        return;
+      }
+
+      // Calculate wait time until next token
+      const refillMs = 1000 / this.requestsPerSecond;
+      const delay = refillMs - (Date.now() - bucket.lastRefill);
+      setTimeout(() => {
+        this._refillTokens(bucket);
+        bucket.tokens--;
+        resolve();
+      }, Math.max(delay, 0));
+    });
+  }
+
+  /**
+   * Execute a function after acquiring a rate-limit token.
+   */
+  async limit(fn, apiKey) {
+    await this.acquireToken(apiKey);
+    return fn();
+  }
+
+  /**
+   * Get stats for debugging/monitoring.
+   */
+  getStats(apiKey) {
+    const bucket = this._getBucket(apiKey);
+    return {
+      key: apiKey || this.defaultKey,
+      tokens: bucket.tokens,
+      maxTokens: this.burst,
+      requestsPerSecond: this.requestsPerSecond,
+    };
+  }
 }
 
 // Singleton instance
-const heliusRateLimiter = new HeliusRateLimiter(1, 5); // 1 request per second, burst of 5
+const heliusRateLimiter = new HeliusRateLimiter(1, 5);
 
 module.exports = heliusRateLimiter;

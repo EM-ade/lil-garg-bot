@@ -15,7 +15,7 @@ module.exports = {
         if (!interaction.member.permissions.has('ADMINISTRATOR')) {
             return await interaction.reply({
                 content: '❌ You do not have permission to use this command.',
-                ephemeral: true
+                flags: 64
             });
         }
 
@@ -40,13 +40,13 @@ module.exports = {
 
             await interaction.reply({
                 content: `✅ Verification log channel set to ${channel}`,
-                ephemeral: true
+                flags: 64
             });
         } catch (error) {
             console.error('Error setting verification log channel:', error);
             await interaction.reply({
                 content: '❌ Failed to set verification log channel. Please try again.',
-                ephemeral: true
+                flags: 64
             });
         }
     }
