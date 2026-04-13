@@ -59,7 +59,7 @@ class ButtonHandler {
                 await this.handleManageWallets(interaction);
                 break;
             default:
-                await interaction.reply({ content: 'Unknown verification button.', ephemeral: true });
+                await interaction.reply({ content: 'Unknown verification button.', flags: 64 });
         }
     }
 
@@ -78,7 +78,7 @@ class ButtonHandler {
                     content: 'You are already verified!',
                     embeds: [embed],
                     components: [EmbedBuilderUtil.getVerificationButtons()],
-                    ephemeral: true
+                    flags: 64
                 });
             }
 
@@ -103,7 +103,7 @@ class ButtonHandler {
             logger.error('Error in verify wallet button:', error);
             await interaction.reply({
                 content: '❌ An error occurred while processing your request.',
-                ephemeral: true
+                flags: 64
             });
         }
     }
@@ -119,7 +119,7 @@ class ButtonHandler {
                     .setDescription('You are not currently verified. Use the Verify button to get started!')
                     .setTimestamp();
                 
-                return await interaction.reply({ embeds: [embed], ephemeral: true });
+                return await interaction.reply({ embeds: [embed], flags: 64 });
             }
 
             const embed = EmbedBuilderUtil.createVerificationEmbed(
@@ -128,12 +128,12 @@ class ButtonHandler {
                 'verified'
             );
 
-            await interaction.reply({ embeds: [embed], ephemeral: true });
+            await interaction.reply({ embeds: [embed], flags: 64 });
         } catch (error) {
             logger.error('Error in check status button:', error);
             await interaction.reply({
                 content: '❌ An error occurred while checking your status.',
-                ephemeral: true
+                flags: 64
             });
         }
     }
@@ -145,7 +145,7 @@ class ButtonHandler {
             if (!user || !user.isVerified) {
                 return await interaction.reply({
                     content: '❌ You need to be verified first to manage wallets.',
-                    ephemeral: true
+                    flags: 64
                 });
             }
 
@@ -161,12 +161,12 @@ class ButtonHandler {
                 .setFooter({ text: 'Contact staff to update wallet information' })
                 .setTimestamp();
 
-            await interaction.reply({ embeds: [embed], ephemeral: true });
+            await interaction.reply({ embeds: [embed], flags: 64 });
         } catch (error) {
             logger.error('Error in manage wallets button:', error);
             await interaction.reply({
                 content: '❌ An error occurred while managing wallets.',
-                ephemeral: true
+                flags: 64
             });
         }
     }
@@ -191,13 +191,13 @@ class ButtonHandler {
                     await this.handlePetStatus(interaction, userId, guildId);
                     break;
                 default:
-                    await interaction.reply({ content: 'Unknown pet button.', ephemeral: true });
+                    await interaction.reply({ content: 'Unknown pet button.', flags: 64 });
             }
         } catch (error) {
             logger.error('Error handling pet button:', error);
             await interaction.reply({
                 content: '❌ An error occurred while processing your request.',
-                ephemeral: true
+                flags: 64
             });
         }
     }
@@ -208,7 +208,7 @@ class ButtonHandler {
         if (!pet) {
             return await interaction.reply({
                 content: '❌ You don\'t have an active pet. Use `/pet adopt` to get one!',
-                ephemeral: true
+                flags: 64
             });
         }
 
@@ -237,7 +237,7 @@ class ButtonHandler {
         }
 
         if (!canPerform) {
-            return await interaction.reply({ content: cooldownMessage, ephemeral: true });
+            return await interaction.reply({ content: cooldownMessage, flags: 64 });
         }
 
         // Perform the action
@@ -266,7 +266,7 @@ class ButtonHandler {
         }
 
         await pet.save();
-        await interaction.reply({ content: message, ephemeral: true });
+        await interaction.reply({ content: message, flags: 64 });
     }
 
     async handlePetStatus(interaction, userId, guildId) {
@@ -275,7 +275,7 @@ class ButtonHandler {
         if (!pet) {
             return await interaction.reply({
                 content: '❌ You don\'t have an active pet. Use `/pet adopt` to get one!',
-                ephemeral: true
+                flags: 64
             });
         }
 
@@ -294,7 +294,7 @@ class ButtonHandler {
             .setFooter({ text: `Created on ${pet.createdAt.toLocaleDateString()}` })
             .setTimestamp();
 
-        await interaction.reply({ embeds: [embed], ephemeral: true });
+        await interaction.reply({ embeds: [embed], flags: 64 });
     }
 
     async handleBattleButtons(interaction) {
@@ -317,13 +317,13 @@ class ButtonHandler {
                     await this.handleBattleForfeit(interaction, userId, guildId);
                     break;
                 default:
-                    await interaction.reply({ content: 'Unknown battle button.', ephemeral: true });
+                    await interaction.reply({ content: 'Unknown battle button.', flags: 64 });
             }
         } catch (error) {
             logger.error('Error handling battle button:', error);
             await interaction.reply({
                 content: '❌ An error occurred while processing your request.',
-                ephemeral: true
+                flags: 64
             });
         }
     }
@@ -334,14 +334,14 @@ class ButtonHandler {
         if (!battle) {
             return await interaction.reply({
                 content: '❌ You are not currently in a battle.',
-                ephemeral: true
+                flags: 64
             });
         }
 
         if (!battle.isPlayerTurn(userId)) {
             return await interaction.reply({
                 content: '❌ It\'s not your turn yet.',
-                ephemeral: true
+                flags: 64
             });
         }
 
@@ -437,7 +437,7 @@ class ButtonHandler {
             logger.error('Error updating battle message:', error);
         }
 
-        await interaction.reply({ content: message, ephemeral: true });
+        await interaction.reply({ content: message, flags: 64 });
     }
 
     async handleBattleForfeit(interaction, userId, guildId) {
@@ -446,7 +446,7 @@ class ButtonHandler {
         if (!battle) {
             return await interaction.reply({
                 content: '❌ You are not currently in a battle.',
-                ephemeral: true
+                flags: 64
             });
         }
 
@@ -455,7 +455,7 @@ class ButtonHandler {
         battle.winner = battle.currentTurn === 'challenger' ? 'opponent' : 'challenger';
         await battle.save();
 
-        await interaction.reply({ content: '🏳️ You have forfeited the battle.', ephemeral: true });
+        await interaction.reply({ content: '🏳️ You have forfeited the battle.', flags: 64 });
         
         // Auto-delete battle channel after 2 minutes
         setTimeout(async () => {
@@ -485,13 +485,13 @@ class ButtonHandler {
                     await this.closeTicket(interaction);
                     break;
                 default:
-                    await interaction.reply({ content: 'Unknown ticket button.', ephemeral: true });
+                    await interaction.reply({ content: 'Unknown ticket button.', flags: 64 });
             }
         } catch (error) {
             logger.error('Error handling ticket button:', error);
             await interaction.reply({
                 content: '❌ An error occurred while processing your request.',
-                ephemeral: true
+                flags: 64
             });
         }
     }
@@ -547,7 +547,7 @@ class ButtonHandler {
         if (tickets.length === 0) {
             return await interaction.reply({
                 content: '❌ You don\'t have any open tickets.',
-                ephemeral: true
+                flags: 64
             });
         }
 
@@ -564,7 +564,7 @@ class ButtonHandler {
             });
         });
 
-        await interaction.reply({ embeds: [embed], ephemeral: true });
+        await interaction.reply({ embeds: [embed], flags: 64 });
     }
 
     async closeTicket(interaction) {
@@ -580,7 +580,7 @@ class ButtonHandler {
         if (!openTicket) {
             return await interaction.reply({
                 content: '❌ You don\'t have any open tickets to close.',
-                ephemeral: true
+                flags: 64
             });
         }
 
@@ -590,7 +590,7 @@ class ButtonHandler {
 
         await interaction.reply({
             content: `✅ Ticket #${openTicket._id.toString().slice(-6)} has been closed.`,
-            ephemeral: true
+            flags: 64
         });
 
         // Auto-delete ticket channel after 1 minute
@@ -624,13 +624,13 @@ class ButtonHandler {
                     await this.handleAdminAction(interaction, 'purge');
                     break;
                 default:
-                    await interaction.reply({ content: 'Unknown admin button.', ephemeral: true });
+                    await interaction.reply({ content: 'Unknown admin button.', flags: 64 });
             }
         } catch (error) {
             logger.error('Error handling admin button:', error);
             await interaction.reply({
                 content: '❌ An error occurred while processing your request.',
-                ephemeral: true
+                flags: 64
             });
         }
     }
@@ -640,7 +640,7 @@ class ButtonHandler {
         if (!interaction.member.permissions.has('Administrator')) {
             return await interaction.reply({
                 content: '❌ You need Administrator permissions to use this feature.',
-                ephemeral: true
+                flags: 64
             });
         }
 
@@ -650,7 +650,7 @@ class ButtonHandler {
             .setDescription(`Please use the appropriate slash command for ${action} actions.`)
             .setTimestamp();
 
-        await interaction.reply({ embeds: [embed], ephemeral: true });
+        await interaction.reply({ embeds: [embed], flags: 64 });
     }
 
     async handleWelcomeButtons(interaction) {
@@ -670,13 +670,13 @@ class ButtonHandler {
                     await this.handleWelcomeBattleStart(interaction, userId, guildId);
                     break;
                 default:
-                    await interaction.reply({ content: 'Unknown welcome button.', ephemeral: true });
+                    await interaction.reply({ content: 'Unknown welcome button.', flags: 64 });
             }
         } catch (error) {
             logger.error('Error handling welcome button:', error);
             await interaction.reply({
                 content: '❌ An error occurred while processing your request.',
-                ephemeral: true
+                flags: 64
             });
         }
     }
@@ -688,7 +688,7 @@ class ButtonHandler {
             if (existingPet) {
                 return await interaction.reply({
                     content: `❌ You already have a pet named **${existingPet.name}**! Use \`/pet status\` to check on them.`,
-                    ephemeral: true
+                    flags: 64
                 });
             }
 
@@ -713,7 +713,7 @@ class ButtonHandler {
             logger.error('Error in welcome pet adopt button:', error);
             await interaction.reply({
                 content: '❌ An error occurred while processing your request.',
-                ephemeral: true
+                flags: 64
             });
         }
     }
@@ -732,7 +732,7 @@ class ButtonHandler {
                 return await interaction.reply({
                     content: '✅ You are already verified!',
                     embeds: [embed],
-                    ephemeral: true
+                    flags: 64
                 });
             }
 
@@ -757,7 +757,7 @@ class ButtonHandler {
             logger.error('Error in welcome NFT verify button:', error);
             await interaction.reply({
                 content: '❌ An error occurred while processing your request.',
-                ephemeral: true
+                flags: 64
             });
         }
     }
@@ -769,7 +769,7 @@ class ButtonHandler {
             if (!userPet) {
                 return await interaction.reply({
                     content: '❌ You need to adopt a pet first before you can battle! Use the "Adopt Pet" button above.',
-                    ephemeral: true
+                    flags: 64
                 });
             }
 
@@ -778,7 +778,7 @@ class ButtonHandler {
             if (existingBattle) {
                 return await interaction.reply({
                     content: '❌ You are already in a battle! Please finish your current battle first.',
-                    ephemeral: true
+                    flags: 64
                 });
             }
 
@@ -797,13 +797,13 @@ class ButtonHandler {
 
             await interaction.reply({
                 embeds: [embed],
-                ephemeral: true
+                flags: 64
             });
         } catch (error) {
             logger.error('Error in welcome battle start button:', error);
             await interaction.reply({
                 content: '❌ An error occurred while processing your request.',
-                ephemeral: true
+                flags: 64
             });
         }
     }
@@ -828,13 +828,13 @@ class ButtonHandler {
                     await this.createTicket(interaction);
                     break;
                 default:
-                    await interaction.reply({ content: 'Unknown feature button.', ephemeral: true });
+                    await interaction.reply({ content: 'Unknown feature button.', flags: 64 });
             }
         } catch (error) {
             logger.error('Error handling feature button:', error);
             await interaction.reply({
                 content: '❌ An error occurred while processing your request.',
-                ephemeral: true
+                flags: 64
             });
         }
     }
@@ -843,13 +843,13 @@ class ButtonHandler {
         try {
             await interaction.reply({
                 content: 'This feature is coming soon!',
-                ephemeral: true
+                flags: 64
             });
         } catch (error) {
             logger.error('Error handling check roles button:', error);
             await interaction.reply({
                 content: '❌ An error occurred while processing your request.',
-                ephemeral: true
+                flags: 64
             });
         }
     }
@@ -861,12 +861,12 @@ class ButtonHandler {
             if (interaction.replied || interaction.deferred) {
                 await interaction.editReply({
                     content: '❌ An error occurred while processing your request. Please try again.',
-                    ephemeral: true
+                    flags: 64
                 });
             } else {
                 await interaction.reply({
                     content: '❌ An error occurred while processing your request. Please try again.',
-                    ephemeral: true
+                    flags: 64
                 });
             }
         } catch (replyError) {

@@ -153,7 +153,7 @@ module.exports = {
       logger.error(`Error in place-buttons command (${subcommand}):`, error);
       await interaction.reply({
         content: "❌ An error occurred while processing your request.",
-        ephemeral: true,
+        flags: 64,
       });
     }
   },
@@ -207,7 +207,7 @@ module.exports = {
 
       await interaction.reply({
         content: `✅ Pet system buttons have been placed in ${channel}!`,
-        ephemeral: true
+        flags: 64
       });
 
       logger.info(`Pet system buttons placed in ${channel.name} by ${interaction.user.tag}`);
@@ -215,7 +215,7 @@ module.exports = {
       logger.error("Error placing pet system buttons:", error);
       await interaction.reply({
         content: "❌ Failed to place pet system buttons. Please try again.",
-        ephemeral: true
+        flags: 64
       });
     }
   },
@@ -259,17 +259,9 @@ module.exports = {
         components: [buttons]
       });
 
-      // Update bot config
-      botConfig.nftVerification = {
-        ...botConfig.nftVerification,
-        enabled: true,
-        buttonChannelId: channel.id
-      };
-      await botConfig.save();
-
       await interaction.reply({
         content: `✅ NFT verification buttons have been placed in ${channel}!`,
-        ephemeral: true
+        flags: 64
       });
 
       logger.info(`NFT verification buttons placed in ${channel.name} by ${interaction.user.tag}`);
@@ -277,7 +269,7 @@ module.exports = {
       logger.error("Error placing NFT verification buttons:", error);
       await interaction.reply({
         content: "❌ Failed to place NFT verification buttons. Please try again.",
-        ephemeral: true
+        flags: 64
       });
     }
   },
@@ -331,7 +323,7 @@ module.exports = {
 
       await interaction.reply({
         content: `✅ Battle system buttons have been placed in ${channel}!`,
-        ephemeral: true
+        flags: 64
       });
 
       logger.info(`Battle system buttons placed in ${channel.name} by ${interaction.user.tag}`);
@@ -339,7 +331,7 @@ module.exports = {
       logger.error("Error placing battle system buttons:", error);
       await interaction.reply({
         content: "❌ Failed to place battle system buttons. Please try again.",
-        ephemeral: true
+        flags: 64
       });
     }
   },
@@ -393,7 +385,7 @@ module.exports = {
 
       await interaction.reply({
         content: `✅ Ticket system buttons have been placed in ${channel}!`,
-        ephemeral: true
+        flags: 64
       });
 
       logger.info(`Ticket system buttons placed in ${channel.name} by ${interaction.user.tag}`);
@@ -401,7 +393,7 @@ module.exports = {
       logger.error("Error placing ticket system buttons:", error);
       await interaction.reply({
         content: "❌ Failed to place ticket system buttons. Please try again.",
-        ephemeral: true
+        flags: 64
       });
     }
   },
@@ -468,7 +460,7 @@ module.exports = {
 
       await interaction.reply({
         content: `✅ Feature hub has been created in ${channel}!`,
-        ephemeral: true
+        flags: 64
       });
 
       logger.info(`Feature hub created in ${channel.name} by ${interaction.user.tag}`);
@@ -476,7 +468,7 @@ module.exports = {
       logger.error("Error creating feature hub:", error);
       await interaction.reply({
         content: "❌ Failed to create feature hub. Please try again.",
-        ephemeral: true
+        flags: 64
       });
     }
   },
@@ -502,14 +494,13 @@ module.exports = {
 
         // Clear all feature channel IDs
         botConfig.petSystem = { ...botConfig.petSystem, buttonChannelId: null };
-        botConfig.nftVerification = { ...botConfig.nftVerification, buttonChannelId: null };
         botConfig.battleSystem = { ...botConfig.battleSystem, buttonChannelId: null };
         botConfig.ticketSystem = { ...botConfig.ticketSystem, buttonChannelId: null };
         botConfig.featureHub = { enabled: false, channelId: null };
 
         await interaction.reply({
           content: `✅ All feature buttons have been removed from ${channel}!`,
-          ephemeral: true
+          flags: 64
         });
       } else {
         // Remove specific feature buttons
@@ -537,9 +528,6 @@ module.exports = {
           case "pet":
             botConfig.petSystem = { ...botConfig.petSystem, buttonChannelId: null };
             break;
-          case "nft":
-            botConfig.nftVerification = { ...botConfig.nftVerification, buttonChannelId: null };
-            break;
           case "battle":
             botConfig.battleSystem = { ...botConfig.battleSystem, buttonChannelId: null };
             break;
@@ -550,7 +538,7 @@ module.exports = {
 
         await interaction.reply({
           content: `✅ ${feature} system buttons have been removed from ${channel}!`,
-          ephemeral: true
+          flags: 64
         });
       }
 
@@ -560,14 +548,13 @@ module.exports = {
       logger.error("Error removing buttons:", error);
       await interaction.reply({
         content: "❌ Failed to remove buttons. Please try again.",
-        ephemeral: true,
+        flags: 64,
       });
     }
   },
 
   async handleVerificationFlow(interaction, botConfig) {
     const channel = interaction.options.getChannel("channel");
-    const sticky = interaction.options.getBoolean("sticky") ?? false;
 
     try {
       const embed = new EmbedBuilder()
@@ -596,28 +583,20 @@ module.exports = {
 
       const actionRow = new ActionRowBuilder().addComponents(verifyButton);
 
-      const message = await channel.send({
+      await channel.send({
         embeds: [embed],
         components: [actionRow],
       });
 
-      botConfig.nftVerification = {
-        ...botConfig.nftVerification,
-        enabled: true,
-        buttonChannelId: channel.id,
-        stickyMessageId: sticky ? message.id : null,
-      };
-      await botConfig.save();
-
       await interaction.reply({
         content: `✅ Verification message posted in ${channel}.`,
-        ephemeral: true,
+        flags: 64,
       });
     } catch (error) {
       logger.error("Error posting verification flow message:", error);
       await interaction.reply({
         content: "❌ Failed to post the verification message. Please try again.",
-        ephemeral: true,
+        flags: 64,
       });
     }
   },

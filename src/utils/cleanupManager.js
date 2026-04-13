@@ -52,10 +52,8 @@ class CleanupManager {
                 await this.cleanupOldTickets(guild, botConfig);
             }
 
-            // Cleanup old verification data
-            if (botConfig.nftVerification?.enabled) {
-                await this.cleanupOldVerifications(guild, botConfig);
-            }
+            // Cleanup old verification data (always run — rules are managed via Supabase)
+            await this.cleanupOldVerifications(guild, botConfig);
 
             // Cleanup inactive pets
             if (botConfig.petSystem?.enabled) {

@@ -12,6 +12,9 @@ function mapRow(row) {
     requiredNftCount: row.required_nft_count,
     roleId: row.role_id,
     roleName: row.role_name,
+    heliusApiKey: row.helius_api_key,
+    periodicCheckEnabled: row.periodic_check_enabled,
+    periodicCheckIntervalMinutes: row.periodic_check_interval_minutes,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }
@@ -28,6 +31,20 @@ async function listByGuild(guildId) {
     .select('*')
     .eq('guild_id', guildId)
     .order('required_nft_count', { ascending: true })
+
+  if (response.error) {
+    throw response.error
+  }
+
+  return (response.data || []).map(mapRow)
+}
+
+async function listAll() {
+  const client = getClient()
+  const response = await client
+    .from('guild_verification_contracts')
+    .select('*')
+    .order('guild_id', { ascending: true })
 
   if (response.error) {
     throw response.error
@@ -82,6 +99,89 @@ async function deleteRule({ guildId, contractAddress, requiredNftCount = null })
 
 module.exports = {
   listByGuild,
+  listAll,
   upsertRule,
   deleteRule,
+  getGuildSettings,
+  updateGuildSettings,
+}
+
+/**
+ * Get per-server verification settings (helius key, periodic config).
+ * Returns the first row's settings for the guild, or defaults.
+ */
+async function getGuildSettings(guildId) {
+  const client = getClient()
+  const response = await client
+    .from('guild_verification_contracts')
+    .select('helius_api_key, periodic_check_enabled, periodic_check_interval_minutes')
+    .eq('guild_id', guildId)
+    .limit(1)
+    .maybeSingle()
+
+  if (response.error) {
+    throw response.error
+  }
+
+  return {
+    heliusApiKey: response.data?.helius_api_key || null,
+    periodicCheckEnabled: response.data?.periodic_check_enabled !== false,
+    periodicCheckIntervalMinutes: response.data?.periodic_check_interval_minutes || 360,
+  }
+}
+
+/**
+ * Update per-server verification settings.
+ * Updates all existing rows for the guild with the new settings values.
+ */
+async function updateGuildSettings({ guildId, heliusApiKey, periodicCheckEnabled, periodicCheckIntervalMinutes }) {
+  const client = getClient()
+  const payload = {}
+
+  if (heliusApiKey !== undefined) {
+    payload.helius_api_key = heliusApiKey || null
+  }
+  if (periodicCheckEnabled !== undefined) {
+    payload.periodic_check_enabled = periodicCheckEnabled
+  }
+  if (periodicCheckIntervalMinutes !== undefined) {
+    payload.periodic_check_interval_minutes = periodicCheckIntervalMinutes
+  }
+
+  if (Object.keys(payload).length === 0) {
+    return null
+  }
+
+  const response = await client
+    .from('guild_verification_contracts')
+    .update(payload)
+    .eq('guild_id', guildId)
+    .select('*')
+
+  if (response.error) {
+    throw response.error
+  }
+
+  // If no rows exist for this guild, insert a minimal row with just the settings
+  if (!response.data || response.data.length === 0) {
+    const insertPayload = {
+      guild_id: guildId,
+      contract_address: '_settings_placeholder_',
+      ...payload,
+    }
+
+    const insertResponse = await client
+      .from('guild_verification_contracts')
+      .insert(insertPayload)
+      .select('*')
+      .maybeSingle()
+
+    if (insertResponse.error) {
+      throw insertResponse.error
+    }
+
+    return mapRow(insertResponse.data)
+  }
+
+  return response.data.map(mapRow)
 }

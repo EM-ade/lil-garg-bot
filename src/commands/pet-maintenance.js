@@ -70,7 +70,7 @@ module.exports = {
       if (!interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
         return await interaction.reply({
           content: "❌ You need Administrator permissions to use this command.",
-          ephemeral: true,
+          flags: 64,
         });
       }
 
@@ -79,7 +79,7 @@ module.exports = {
       if (!botConfig?.petSystem?.enabled) {
         return await interaction.reply({
           content: "❌ Pet system is not enabled in this server. Use `/config` to enable it first.",
-          ephemeral: true,
+          flags: 64,
         });
       }
 
@@ -113,7 +113,7 @@ module.exports = {
       logger.error(`Error in pet-maintenance command (${subcommand}):`, error);
       await interaction.reply({
         content: "❌ An error occurred while processing your request.",
-        ephemeral: true,
+        flags: 64,
       });
     }
   },
@@ -125,7 +125,7 @@ module.exports = {
       if (!maintenanceService) {
         return await interaction.reply({
           content: "❌ Pet maintenance service is not available. Please contact a bot administrator.",
-          ephemeral: true,
+          flags: 64,
         });
       }
 
@@ -148,7 +148,7 @@ module.exports = {
       logger.error("Error starting pet maintenance:", error);
       await interaction.reply({
         content: "❌ Failed to start pet maintenance service.",
-        ephemeral: true,
+        flags: 64,
       });
     }
   },
@@ -160,7 +160,7 @@ module.exports = {
       if (!maintenanceService) {
         return await interaction.reply({
           content: "❌ Pet maintenance service is not available.",
-          ephemeral: true,
+          flags: 64,
         });
       }
 
@@ -182,7 +182,7 @@ module.exports = {
       logger.error("Error stopping pet maintenance:", error);
       await interaction.reply({
         content: "❌ Failed to stop pet maintenance service.",
-        ephemeral: true,
+        flags: 64,
       });
     }
   },
@@ -194,7 +194,7 @@ module.exports = {
       if (!maintenanceService) {
         return await interaction.reply({
           content: "❌ Pet maintenance service is not available.",
-          ephemeral: true,
+          flags: 64,
         });
       }
 
@@ -204,7 +204,7 @@ module.exports = {
       if (!stats) {
         return await interaction.reply({
           content: "❌ Failed to get maintenance statistics.",
-          ephemeral: true,
+          flags: 64,
         });
       }
 
@@ -252,7 +252,7 @@ module.exports = {
       logger.error("Error getting pet maintenance status:", error);
       await interaction.reply({
         content: "❌ Failed to get maintenance status.",
-        ephemeral: true,
+        flags: 64,
       });
     }
   },
@@ -264,7 +264,7 @@ module.exports = {
       if (!maintenanceService) {
         return await interaction.reply({
           content: "❌ Pet maintenance service is not available.",
-          ephemeral: true,
+          flags: 64,
         });
       }
 
@@ -273,7 +273,7 @@ module.exports = {
       if (!stats) {
         return await interaction.reply({
           content: "❌ Failed to get maintenance statistics.",
-          ephemeral: true,
+          flags: 64,
         });
       }
 
@@ -308,7 +308,7 @@ module.exports = {
       logger.error("Error getting pet maintenance stats:", error);
       await interaction.reply({
         content: "❌ Failed to get maintenance statistics.",
-        ephemeral: true,
+        flags: 64,
       });
     }
   },
@@ -322,7 +322,7 @@ module.exports = {
       if (!maintenanceService) {
         return await interaction.reply({
           content: "❌ Pet maintenance service is not available.",
-          ephemeral: true,
+          flags: 64,
         });
       }
 
@@ -350,14 +350,14 @@ module.exports = {
       } else {
         await interaction.editReply({
           content: `❌ Failed to maintain pet: ${result.error}`,
-          ephemeral: true,
+          flags: 64,
         });
       }
     } catch (error) {
       logger.error("Error maintaining pet:", error);
       await interaction.editReply({
         content: "❌ Failed to maintain pet.",
-        ephemeral: true,
+        flags: 64,
       });
     }
   },
@@ -371,7 +371,7 @@ module.exports = {
       if (!maintenanceService) {
         return await interaction.reply({
           content: "❌ Pet maintenance service is not available.",
-          ephemeral: true,
+          flags: 64,
         });
       }
 
@@ -397,14 +397,14 @@ module.exports = {
       } else {
         await interaction.editReply({
           content: `❌ Failed to apply emergency care: ${result.error}`,
-          ephemeral: true,
+          flags: 64,
         });
       }
     } catch (error) {
       logger.error("Error applying emergency care:", error);
       await interaction.editReply({
         content: "❌ Failed to apply emergency care.",
-        ephemeral: true,
+        flags: 64,
       });
     }
   },
@@ -416,7 +416,7 @@ module.exports = {
       if (!maintenanceService) {
         return await interaction.reply({
           content: "❌ Pet maintenance service is not available.",
-          ephemeral: true,
+          flags: 64,
         });
       }
 
@@ -442,7 +442,7 @@ module.exports = {
       logger.error("Error running manual pet maintenance:", error);
       await interaction.editReply({
         content: "❌ Failed to run pet maintenance.",
-        ephemeral: true,
+        flags: 64,
       });
     }
   },
@@ -489,7 +489,7 @@ module.exports = {
       logger.error("Error getting abandoned pets:", error);
       await interaction.reply({
         content: "❌ Failed to get abandoned pets information.",
-        ephemeral: true,
+        flags: 64,
       });
     }
   },

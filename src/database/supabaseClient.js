@@ -2,17 +2,20 @@ const { createClient } = require('@supabase/supabase-js');
 const config = require('../config/environment');
 
 let cachedClient = null;
+let supabaseAvailable = true;
 
 function ensureConfig() {
   if (!config.supabase?.url || !config.supabase?.serviceRoleKey) {
-    throw new Error(
-      'Supabase configuration is missing. Please set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.'
-    );
+    supabaseAvailable = false;
+    return false;
   }
+  return true;
 }
 
 function createSupabaseClient(options = {}) {
-  ensureConfig();
+  if (!ensureConfig()) {
+    return null;
+  }
   const client = createClient(config.supabase.url, config.supabase.serviceRoleKey, {
     auth: {
       persistSession: false,
@@ -30,7 +33,12 @@ function getSupabaseClient(options = {}) {
   return cachedClient;
 }
 
+function isSupabaseAvailable() {
+  return supabaseAvailable && cachedClient !== null;
+}
+
 module.exports = {
   getSupabaseClient,
   createSupabaseClient,
+  isSupabaseAvailable,
 };

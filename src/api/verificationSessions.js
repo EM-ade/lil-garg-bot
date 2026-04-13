@@ -67,21 +67,26 @@ router.get('/verification/session/:token', async (req, res) => {
   }
 
   const { token } = req.params;
+  const tokenPrefix = token?.slice(0, 16);
 
   try {
+    logger.info(`[verification] Fetching session for token: ${tokenPrefix}...`);
     const session = await verificationSessionService.findSessionByToken(token, {
       includeMessage: true,
     });
 
     if (!session) {
+      logger.warn(`[verification] Session not found for token: ${tokenPrefix}...`);
       return res.status(404).json({
         success: false,
         error: 'Verification session not found.',
       });
     }
 
+    logger.info(`[verification] Session found: ${tokenPrefix}... (status: ${session.status})`);
     return res.json({ success: true, session });
   } catch (error) {
+    logger.error(`[verification] Error fetching session ${tokenPrefix}...:`, error);
     return handleVerificationError(error, res);
   }
 });

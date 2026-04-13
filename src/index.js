@@ -20,32 +20,44 @@ let config,
   CleanupManager,
   NFTMonitoringService,
   PetMaintenanceService,
-  periodicRoleCheck;
+  periodicRoleCheck,
+  setNftCache,
+  NFTCache;
 
 try {
-    config = require("./config/environment");
-    ({ loadCommands } = require("./utils/commandLoader"));
-    setupDatabase = require("./database/connection");
-    logger = require("./utils/logger");
-    ErrorHandler = require("./utils/errorHandler");
-    rateLimiter = require("./utils/rateLimiter");
-    chatManager = require("./services/chatManager");
-    AIChatbot = require("./services/aiChatbot");
-    SecurityManager = require("./utils/securityManager");
-    ButtonHandler = require("./utils/buttonHandler");
-    CleanupManager = require("./utils/cleanupManager");
-    NFTMonitoringService = require("./services/nftMonitoringService");
-    PetMaintenanceService = require("./services/petMaintenanceService");
-    ({ periodicRoleCheck } = require("./services/nftRoleManagerService"));
+  config = require("./config/environment");
+  ({ loadCommands } = require("./utils/commandLoader"));
+  setupDatabase = require("./database/connection");
+  logger = require("./utils/logger");
+  ErrorHandler = require("./utils/errorHandler");
+  rateLimiter = require("./utils/rateLimiter");
+  chatManager = require("./services/chatManager");
+  AIChatbot = require("./services/aiChatbot");
+  SecurityManager = require("./utils/securityManager");
+  ButtonHandler = require("./utils/buttonHandler");
+  CleanupManager = require("./utils/cleanupManager");
+  NFTMonitoringService = require("./services/nftMonitoringService");
+  PetMaintenanceService = require("./services/petMaintenanceService");
+  ({ periodicRoleCheck, setNftCache } = require("./services/nftRoleManagerService"));
+  NFTCache = require("./services/redisCache");
 
-    // Setup global error handlers
-    ErrorHandler.setupGlobalErrorHandlers();
+  // Setup global error handlers
+  ErrorHandler.setupGlobalErrorHandlers();
 } catch (importError) {
-    const errorTime = new Date();
-    console.error(`[${errorTime.toISOString()}] [IMPORT] Critical error during module imports:`, importError);
-    console.error(`[${errorTime.toISOString()}] [IMPORT] Error details:`, importError.message);
-    console.error(`[${errorTime.toISOString()}] [IMPORT] Error stack:`, importError.stack);
-    process.exit(1);
+  const errorTime = new Date();
+  console.error(
+    `[${errorTime.toISOString()}] [IMPORT] Critical error during module imports:`,
+    importError,
+  );
+  console.error(
+    `[${errorTime.toISOString()}] [IMPORT] Error details:`,
+    importError.message,
+  );
+  console.error(
+    `[${errorTime.toISOString()}] [IMPORT] Error stack:`,
+    importError.stack,
+  );
+  process.exit(1);
 }
 
 class LilGargsBot {
@@ -82,35 +94,35 @@ class LilGargsBot {
   async initialize() {
     const initStartTime = new Date();
     console.log(
-      `[${initStartTime.toISOString()}] [INIT] Starting bot initialization...`
+      `[${initStartTime.toISOString()}] [INIT] Starting bot initialization...`,
     );
 
     try {
       console.log(
-        `[${new Date().toISOString()}] [INIT] Attempting to setup database...`
+        `[${new Date().toISOString()}] [INIT] Attempting to setup database...`,
       );
       // Setup database connection
       await setupDatabase();
       console.log(
-        `[${new Date().toISOString()}] [INIT] Database setup complete.`
+        `[${new Date().toISOString()}] [INIT] Database setup complete.`,
       );
 
       console.log(
-        `[${new Date().toISOString()}] [INIT] Attempting to load commands...`
+        `[${new Date().toISOString()}] [INIT] Attempting to load commands...`,
       );
       // Load commands
       await loadCommands(this.client);
       console.log(
-        `[${new Date().toISOString()}] [INIT] Commands loaded successfully.`
+        `[${new Date().toISOString()}] [INIT] Commands loaded successfully.`,
       );
 
       console.log(
-        `[${new Date().toISOString()}] [INIT] Attempting to login to Discord...`
+        `[${new Date().toISOString()}] [INIT] Attempting to login to Discord...`,
       );
       // Login to Discord
       await this.client.login(process.env.DISCORD_BOT_TOKEN);
       console.log(
-        `[${new Date().toISOString()}] [INIT] Discord login successful.`
+        `[${new Date().toISOString()}] [INIT] Discord login successful.`,
       );
 
       const initEndTime = new Date();
@@ -118,22 +130,22 @@ class LilGargsBot {
       logger.info("Lil Gargs Bot initialized successfully!");
       console.log(
         `[${initEndTime.toISOString()}] [INIT] Bot initialization complete (took ${initDuration.toFixed(
-          2
-        )}s).`
+          2,
+        )}s).`,
       );
     } catch (error) {
       const errorTime = new Date();
       console.error(
         `[${errorTime.toISOString()}] [INIT] Failed to initialize bot:`,
-        error
+        error,
       );
       console.error(
         `[${errorTime.toISOString()}] [INIT] Error details:`,
-        error.message
+        error.message,
       );
       console.error(
         `[${errorTime.toISOString()}] [INIT] Error stack:`,
-        error.stack
+        error.stack,
       );
       logger.error("Failed to initialize bot:", error);
       process.exit(1);
@@ -161,18 +173,42 @@ class LilGargsBot {
         this.cleanupManager.setupCleanupJobs();
         logger.info("Cleanup manager started successfully");
 
-        // Schedule periodic NFT role checks every 30 minutes
-        const periodicIntervalMs = 30 * 60 * 1000; // 30 minutes
-        setInterval(() => periodicRoleCheck(this.client), periodicIntervalMs);
-        logger.info(`Scheduled periodic NFT role checks every ${periodicIntervalMs / 60000} minutes.`);
+        // Initialize Redis NFT cache
+        let nftCache = null;
+        try {
+          nftCache = new NFTCache(config.redis.url);
+          await nftCache.connect();
+          setNftCache(nftCache);
+          this.nftCache = nftCache;
+          logger.info("NFT Redis cache initialized");
+        } catch (error) {
+          logger.warn(`Failed to connect to Redis, running without cache: ${error.message}`);
+        }
+
+        // Start per-server periodic role check scheduler
+        schedulePeriodicRoleChecks(this.client);
       } catch (error) {
-        logger.error('Failed to start automated services:', error)
+        logger.error("Failed to start automated services:", error);
       }
-    })
+    });
 
     this.client.on("interactionCreate", async (interaction) => {
       if (interaction.isChatInputCommand()) {
-        const command = this.client.commands.get(interaction.commandName)
+        const command = this.client.commands.get(interaction.commandName);
+
+        if (!command) {
+          logger.warn(
+            `No command matching ${interaction.commandName} was found.`,
+          );
+          await interaction
+            .reply({
+              content: "❌ This command is deprecated or no longer exists.",
+              flags: 64,
+            })
+            .catch(console.error);
+          return;
+        }
+
         try {
           // Apply rate limiting
           const canExecute = await rateLimiter.applyRateLimit(
@@ -181,7 +217,7 @@ class LilGargsBot {
             5, // 5 uses per user per minute
             60000, // 1 minute window
             100, // 100 global uses per minute
-            60000 // 1 minute window
+            60000, // 1 minute window
           );
 
           if (!canExecute) {
@@ -193,7 +229,7 @@ class LilGargsBot {
           await ErrorHandler.handleCommandError(
             interaction,
             error,
-            interaction.commandName
+            interaction.commandName,
           );
         }
       } else if (interaction.isModalSubmit()) {
@@ -206,20 +242,21 @@ class LilGargsBot {
           await interaction.reply({
             content:
               "Please use the `/verify-nft` command directly to verify your wallet.",
-            ephemeral: true,
+            flags: 64,
           });
         } else if (interaction.customId === "nft_verify_button") {
           // Handle NFT verification button
-          const verifyNftCommand = this.client.commands.get('verify-nft');
+          const verifyNftCommand = this.client.commands.get("verify-nft");
           if (verifyNftCommand && verifyNftCommand.handleButtonInteraction) {
             await verifyNftCommand.handleButtonInteraction(interaction);
           } else {
             await interaction.reply({
-              content: "❌ Verification system not available. Please try again later.",
-              ephemeral: true,
+              content:
+                "❌ Verification system not available. Please try again later.",
+              flags: 64,
             });
           }
-        } else if (interaction.customId.startsWith('ticket_')) {
+        } else if (interaction.customId.startsWith("ticket_")) {
           // Handle ticket button interactions
           await this.handleTicketButton(interaction);
         }
@@ -240,15 +277,16 @@ class LilGargsBot {
       if (isReply) {
         try {
           repliedMessage = await message.channel.messages.fetch(
-            message.reference.messageId
+            message.reference.messageId,
           );
         } catch (fetchError) {
           logger.warn(
-            `Failed to fetch replied message ${message.reference?.messageId}: ${fetchError.message}`
+            `Failed to fetch replied message ${message.reference?.messageId}: ${fetchError.message}`,
           );
         }
       }
-      const isBotReply = repliedMessage && repliedMessage.author.id === this.client.user.id;
+      const isBotReply =
+        repliedMessage && repliedMessage.author.id === this.client.user.id;
 
       if (!hasDirectMention && !isBotReply) {
         return;
@@ -287,13 +325,13 @@ class LilGargsBot {
 
       // Handle NFT verification modal
       if (customId === "nft_verify_modal") {
-        const verifyNftCommand = this.client.commands.get('verify-nft');
+        const verifyNftCommand = this.client.commands.get("verify-nft");
         if (verifyNftCommand && verifyNftCommand.handleModalSubmit) {
           await verifyNftCommand.handleModalSubmit(interaction);
         } else {
           await interaction.reply({
             content: "❌ NFT verification handler not found.",
-            ephemeral: true,
+            flags: 64,
           });
         }
       } else if (customId === "ticket_create_modal") {
@@ -304,14 +342,14 @@ class LilGargsBot {
         logger.warn(`Unhandled modal submission: ${customId}`);
         await interaction.reply({
           content: "Unhandled modal submission.",
-          ephemeral: true,
+          flags: 64,
         });
       }
     } catch (error) {
       logger.error("Error handling modal submit:", error);
       await interaction.reply({
-          content: "❌ An error occurred while processing your submission.",
-          ephemeral: true,
+        content: "❌ An error occurred while processing your submission.",
+        flags: 64,
       });
     }
   }
@@ -385,18 +423,18 @@ class LilGargsBot {
             name: "Status",
             value: "Open",
             inline: true,
-          }
+          },
         )
         .setTimestamp();
 
-      await interaction.reply({ embeds: [embed], ephemeral: true });
+      await interaction.reply({ embeds: [embed], flags: 64 });
 
       // Send initial message in ticket channel
       const ticketEmbed = new (require("discord.js").EmbedBuilder)()
         .setColor("#FF6B35")
         .setTitle(`🎫 Ticket #${ticket._id.toString().slice(-6)}`)
         .setDescription(
-          `**Subject:** ${subject}\n\n**Description:** ${description}`
+          `**Subject:** ${subject}\n\n**Description:** ${description}`,
         )
         .addFields(
           {
@@ -413,7 +451,7 @@ class LilGargsBot {
             name: "Status",
             value: "Open",
             inline: true,
-          }
+          },
         )
         .setTimestamp();
 
@@ -423,14 +461,14 @@ class LilGargsBot {
       });
 
       logger.info(
-        `Ticket created for ${username} (${userId}) in ${guild.name}`
+        `Ticket created for ${username} (${userId}) in ${guild.name}`,
       );
     } catch (error) {
       logger.error("Error in ticket create modal:", error);
       await interaction.reply({
         content:
           "❌ An error occurred while creating your ticket. Please try again.",
-        ephemeral: true,
+        flags: 64,
       });
     }
   }
@@ -448,7 +486,7 @@ class LilGargsBot {
       if (existingPet) {
         return await interaction.reply({
           content: `❌ You already have a pet named **${existingPet.name}**!`,
-          ephemeral: true,
+          flags: 64,
         });
       }
 
@@ -458,7 +496,7 @@ class LilGargsBot {
       if (!botConfig?.petSystem?.enabled) {
         return await interaction.reply({
           content: "❌ Pet system is not enabled in this server.",
-          ephemeral: true,
+          flags: 64,
         });
       }
 
@@ -494,22 +532,22 @@ class LilGargsBot {
             name: "Level",
             value: "1",
             inline: true,
-          }
+          },
         )
         .setFooter({ text: `Use /pet status to check on ${petName}!` })
         .setTimestamp();
 
-      await interaction.reply({ embeds: [embed], ephemeral: true });
+      await interaction.reply({ embeds: [embed], flags: 64 });
 
       logger.info(
-        `Pet ${petName} adopted by ${username} (${userId}) in ${interaction.guild.name}`
+        `Pet ${petName} adopted by ${username} (${userId}) in ${interaction.guild.name}`,
       );
     } catch (error) {
       logger.error("Error in pet adopt modal:", error);
       await interaction.reply({
         content:
           "❌ An error occurred while adopting your pet. Please try again.",
-        ephemeral: true,
+        flags: 64,
       });
     }
   }
@@ -526,24 +564,28 @@ class LilGargsBot {
 
   async handleTicketButton(interaction) {
     try {
-      logger.info(`[Ticket Button] Handling button: ${interaction.customId}, replied: ${interaction.replied}, deferred: ${interaction.deferred}`);
-      
+      logger.info(
+        `[Ticket Button] Handling button: ${interaction.customId}, replied: ${interaction.replied}, deferred: ${interaction.deferred}`,
+      );
+
       // Check if interaction is already acknowledged
       if (!interaction.replied && !interaction.deferred) {
         await interaction.deferReply({ ephemeral: false });
         logger.info(`[Ticket Button] Deferred reply successfully`);
       } else {
-        logger.warn(`[Ticket Button] Interaction already acknowledged - replied: ${interaction.replied}, deferred: ${interaction.deferred}`);
+        logger.warn(
+          `[Ticket Button] Interaction already acknowledged - replied: ${interaction.replied}, deferred: ${interaction.deferred}`,
+        );
       }
 
       const { Ticket, BotConfig } = require("./database/models");
       // customId format: ticket_ACTION_TICKETID
-      const parts = interaction.customId.split('_');
+      const parts = interaction.customId.split("_");
       const action = parts[1]; // 'close', 'assign', or 'status'
       const ticketId = parts[2]; // the MongoDB _id
-      
+
       logger.info(`[Ticket Button] Action: ${action}, TicketId: ${ticketId}`);
-      
+
       const ticket = await Ticket.findById(ticketId);
       if (!ticket) {
         return await interaction.editReply({
@@ -551,15 +593,18 @@ class LilGargsBot {
         });
       }
 
-      const botConfig = await BotConfig.findOne({ guildId: interaction.guild.id });
-      const isStaff = botConfig?.ticketSystem?.staffRoleIds?.some(roleId => 
-        interaction.member.roles.cache.has(roleId)
-      ) || interaction.member.permissions.has('Administrator');
-      
+      const botConfig = await BotConfig.findOne({
+        guildId: interaction.guild.id,
+      });
+      const isStaff =
+        botConfig?.ticketSystem?.staffRoleIds?.some((roleId) =>
+          interaction.member.roles.cache.has(roleId),
+        ) || interaction.member.permissions.has("Administrator");
+
       const isCreator = ticket.creator.id === interaction.user.id;
 
       switch (action) {
-        case 'close':
+        case "close":
           if (!isStaff && !isCreator) {
             return await interaction.editReply({
               content: "❌ You don't have permission to close this ticket.",
@@ -586,26 +631,31 @@ class LilGargsBot {
           }, 5000);
           break;
 
-        case 'assign':
+        case "assign":
           if (!isStaff) {
             return await interaction.editReply({
               content: "❌ Only staff can assign tickets.",
             });
           }
 
-          await ticket.assignStaff(interaction.user.id, interaction.user.username);
+          await ticket.assignStaff(
+            interaction.user.id,
+            interaction.user.username,
+          );
 
           const { EmbedBuilder } = require("discord.js");
           const assignEmbed = new EmbedBuilder()
             .setColor("#FF6B35")
             .setTitle("👤 Ticket Assigned")
-            .setDescription(`This ticket has been assigned to ${interaction.user.username}`)
+            .setDescription(
+              `This ticket has been assigned to ${interaction.user.username}`,
+            )
             .setTimestamp();
 
           await interaction.editReply({ embeds: [assignEmbed] });
           break;
 
-        case 'status':
+        case "status":
           if (!isStaff) {
             return await interaction.editReply({
               content: "❌ Only staff can update ticket status.",
@@ -613,11 +663,12 @@ class LilGargsBot {
           }
 
           await interaction.editReply({
-            content: "Use `/ticket status` command to update the ticket status.",
+            content:
+              "Use `/ticket status` command to update the ticket status.",
           });
           break;
 
-        case 'transcript':
+        case "transcript":
           if (!isStaff) {
             return await interaction.editReply({
               content: "❌ Only staff can request ticket transcripts.",
@@ -625,7 +676,8 @@ class LilGargsBot {
           }
 
           await interaction.editReply({
-            content: "📄 Transcript feature coming soon. Please export messages manually for now.",
+            content:
+              "📄 Transcript feature coming soon. Please export messages manually for now.",
           });
           break;
 
@@ -640,9 +692,9 @@ class LilGargsBot {
         stack: error.stack,
         customId: interaction.customId,
         replied: interaction.replied,
-        deferred: interaction.deferred
+        deferred: interaction.deferred,
       });
-      
+
       try {
         if (interaction.deferred && !interaction.replied) {
           await interaction.editReply({
@@ -651,11 +703,14 @@ class LilGargsBot {
         } else if (!interaction.replied && !interaction.deferred) {
           await interaction.reply({
             content: "❌ An error occurred while processing your request.",
-            ephemeral: true,
+            flags: 64,
           });
         }
       } catch (replyError) {
-        logger.error(`[Ticket Button] Failed to send error message:`, replyError.message);
+        logger.error(
+          `[Ticket Button] Failed to send error message:`,
+          replyError.message,
+        );
       }
     }
   }
@@ -674,7 +729,7 @@ class LilGargsBot {
       let welcomeChannel = null;
       if (botConfig.welcomeChannelId) {
         welcomeChannel = member.guild.channels.cache.get(
-          botConfig.welcomeChannelId
+          botConfig.welcomeChannelId,
         );
       }
 
@@ -682,7 +737,7 @@ class LilGargsBot {
         welcomeChannel =
           member.guild.systemChannel ||
           member.guild.channels.cache.find(
-            (channel) => channel.name.includes("general") && channel.type === 0
+            (channel) => channel.name.includes("general") && channel.type === 0,
           );
       }
 
@@ -759,7 +814,7 @@ Welcome to the family! 🎊`;
       });
 
       logger.info(
-        `Sent welcome message for ${member.user.username} in ${member.guild.name}`
+        `Sent welcome message for ${member.user.username} in ${member.guild.name}`,
       );
     } catch (error) {
       logger.error("Error in handleNewMember:", error);
@@ -770,24 +825,59 @@ Welcome to the family! 🎊`;
 // Start the bot
 // Set up Express server for API routes
 const app = express();
-const cors = require('cors');
-const https = require('https');
-const fs = require('fs');
-const path = require('path');
+const cors = require("cors");
+const https = require("https");
+const fs = require("fs");
+const path = require("path");
 
-const corsFromEnv = (process.env.CORS_ALLOWED_ORIGINS || '')
-  .split(',')
+// Determine ports FIRST (needed by route handlers below)
+const HF_PORT = 7860;
+console.log(`[${new Date().toISOString()}] [PORT-DEBUG] process.env.PORT = "${process.env.PORT}"`);
+const PRIMARY_PORT = parseInt(process.env.PORT, 10) || HF_PORT;
+console.log(`[${new Date().toISOString()}] [PORT-DEBUG] PRIMARY_PORT = ${PRIMARY_PORT}`);
+const HTTPS_PORT =
+  process.env.API_HTTPS_PORT || process.env.HTTPS_PORT || 30392;
+
+// Request logging middleware - logs EVERY request for debugging
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] [REQUEST] ${req.method} ${req.path} from ${req.headers.origin || 'no-origin'}`);
+  next();
+});
+
+// Verification session endpoint - MUST be before /api routes to avoid conflicts
+app.get("/verify-session/:token", async (req, res) => {
+  console.log(`[${new Date().toISOString()}] [VERIFY-SESSION] HIT - Token: ${req.params.token?.slice(0, 16)}... Origin: ${req.headers.origin || 'none'}`);
+  try {
+    const { verificationSessionService } = require('./services/verificationSessionService');
+    const session = await verificationSessionService.findSessionByToken(req.params.token, { includeMessage: true });
+    if (!session) {
+      console.log(`[${new Date().toISOString()}] [VERIFY-SESSION] Not found for token: ${req.params.token?.slice(0, 16)}...`);
+      return res.status(404).json({ success: false, error: 'Session not found' });
+    }
+    console.log(`[${new Date().toISOString()}] [VERIFY-SESSION] Found: ${session.status}`);
+    res.json({ success: true, session });
+  } catch (err) {
+    console.error(`[${new Date().toISOString()}] [VERIFY-SESSION] Error:`, err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// CORS configuration
+const corsFromEnv = (process.env.CORS_ALLOWED_ORIGINS || "")
+  .split(",")
   .map((origin) => origin.trim())
   .filter(Boolean);
 
-// Update allowed origins to include HTTPS
+// Update allowed origins to include frontend
 const allowedOrigins = Array.from(
   new Set([
     ...corsFromEnv,
-    config?.frontend?.url || 'http://localhost:5173',
-    'http://localhost:5173',
-    'https://lilgarg.xyz',  // Add HTTPS frontend
-    'https://2.56.246.119', // Add HTTPS backend IP
+    config?.frontend?.url || "http://localhost:5173",
+    "http://localhost:5173",
+    "https://lilgarg.xyz",
+    "https://discord.lilgarg.xyz",
+    "http://2.56.246.119:30391",
+    "https://2.56.246.119:30392",
   ]),
 );
 
@@ -808,54 +898,265 @@ app.use(express.json());
 const verificationCallbackRouter = require("./api/verificationCallback");
 const verifyRouter = require("./api/verify");
 const verificationSessionsRouter = require("./api/verificationSessions");
+const multiTenantVerifyRouter = require("./api/multiTenantVerify");
+
 app.use("/api", verificationCallbackRouter);
 app.use("/api", verifyRouter);
 app.use("/api", verificationSessionsRouter);
+app.use("/api", multiTenantVerifyRouter);
 
 // Make Discord client available to API routes
 let discordClient = null;
 
-// Start BOTH HTTP and HTTPS servers
-const HTTP_PORT = process.env.API_PORT || 3001;
-const HTTPS_PORT = 8443; // Use custom HTTPS port
-
-// Load SSL certificates
-const sslOptions = {
-    key: fs.readFileSync(path.join(__dirname, '../server.key')),
-    cert: fs.readFileSync(path.join(__dirname, '../server.crt'))
-};
-
-// Start HTTPS server
-const httpsServer = https.createServer(sslOptions, app);
-httpsServer.listen(HTTPS_PORT, () => {
-  console.log(`[${new Date().toISOString()}] [API] HTTPS Server running on port ${HTTPS_PORT}`);
-  console.log(`[${new Date().toISOString()}] [API] HTTPS URL: https://2.56.246.119:${HTTPS_PORT}`);
+// Health check endpoint for hosting providers
+app.get("/health", (req, res) => {
+  res.json({
+    status: "ok",
+    timestamp: new Date().toISOString(),
+    discordConnected: !!discordClient && discordClient.isReady(),
+    httpPort: PRIMARY_PORT,
+    httpsPort: HTTPS_PORT,
+  });
 });
 
-// Start HTTP server (keep for backward compatibility)
-app.listen(HTTP_PORT, () => {
-  console.log(`[${new Date().toISOString()}] [API] HTTP Server running on port ${HTTP_PORT}`);
+// Simple ping endpoint for uptime monitors (UptimeRobot, etc.)
+app.get("/hf-ping", (req, res) => {
+  res.type("text/plain").send("pong");
+});
+
+// Root route to verify connectivity
+app.get("/", (req, res) => {
+  res.type("text/html").send(
+    "<h1>🐲 Lil Gargs Bot API</h1><p>Server is running.</p>" +
+    `<p>Port: ${PRIMARY_PORT} | Discord: ${!!discordClient}</p>`
+  );
+});
+
+// Debug: test if /api/* paths work at all
+app.get("/api/test", (req, res) => {
+  res.json({ ok: true, message: "API routes are accessible" });
+});
+
+// Debug: Supabase connectivity check
+app.get("/debug/supabase", async (req, res) => {
+  const { isSupabaseAvailable, getSupabaseClient } = require('./database/supabaseClient');
+  const available = isSupabaseAvailable();
+  res.json({
+    supabaseAvailable: available,
+    supabaseUrl: process.env.SUPABASE_URL ? 'SET' : 'NOT SET',
+    supabaseKey: process.env.SUPABASE_SERVICE_ROLE_KEY ? 'SET' : 'NOT SET',
+  });
+});
+
+// Load SSL certificates (optional - only if files exist)
+const keyPath = path.join(__dirname, "../server.key");
+const certPath = path.join(__dirname, "../server.crt");
+const sslFilesExist = fs.existsSync(keyPath) && fs.existsSync(certPath);
+
+if (sslFilesExist) {
+  const sslOptions = {
+    key: fs.readFileSync(keyPath),
+    cert: fs.readFileSync(certPath),
+  };
+
+  const httpsServer = https.createServer(sslOptions, app);
+  httpsServer.listen(HTTPS_PORT, "0.0.0.0", () => {
+    console.log(
+      `[${new Date().toISOString()}] [API] HTTPS Server running on port ${HTTPS_PORT}`,
+    );
+  });
+} else {
+  console.log(
+    `[${new Date().toISOString()}] [API] SSL certificates not found, skipping HTTPS server`,
+  );
+}
+
+// Primary HTTP listener - on HF Spaces this MUST be port 7860
+// For local/Orihost deployment, PORT env var can override
+app.listen(PRIMARY_PORT, "0.0.0.0", () => {
+  console.log(
+    `[${new Date().toISOString()}] [HTTP] Express server listening on port ${PRIMARY_PORT}`,
+  );
+});
+
+// Catch-all 404 handler for debugging - catches requests that don't match any route
+app.use((req, res) => {
+  console.log(`[${new Date().toISOString()}] [404] No route matched: ${req.method} ${req.path}`);
+  res.status(404).json({ error: "Not Found", path: req.path });
 });
 
 // Function to set the Discord client once the bot is ready
 function setDiscordClient(client) {
   discordClient = client;
-  app.set('discordClient', client);
-  console.log(`[${new Date().toISOString()}] [API] Discord client set for API routes`);
+  app.set("discordClient", client);
+  console.log(
+    `[${new Date().toISOString()}] [API] Discord client set for API routes`,
+  );
 }
 
-console.log(`[${new Date().toISOString()}] [STARTUP] Creating bot instance...`);
-try {
+/**
+ * Per-server periodic role check scheduler.
+ * Each guild with periodic checks enabled gets its own independent timer.
+ */
+const periodicTimers = new Map();
+
+async function schedulePeriodicRoleChecks(client) {
+  const { getGuildVerificationConfigStore } = require('./services/serviceFactory');
+  const guildVerificationConfigStore = getGuildVerificationConfigStore();
+
+  if (!guildVerificationConfigStore) {
+    logger.warn('No guild verification config store — skipping periodic role check setup');
+    return;
+  }
+
+  try {
+    // Get all rules across all guilds
+    const allRules = await guildVerificationConfigStore.listAll();
+
+    // Group by guild
+    const guildMap = new Map();
+    for (const rule of allRules) {
+      if (!guildMap.has(rule.guildId)) {
+        guildMap.set(rule.guildId, {
+          periodicCheckEnabled: rule.periodicCheckEnabled !== false,
+          periodicCheckIntervalMinutes: rule.periodicCheckIntervalMinutes || 360,
+        });
+      }
+    }
+
+    // Clear existing timers
+    for (const [guildId, timer] of periodicTimers) {
+      clearInterval(timer);
+    }
+    periodicTimers.clear();
+
+    // Set up per-guild timers
+    for (const [guildId, settings] of guildMap) {
+      if (!settings.periodicCheckEnabled) {
+        logger.info(`Periodic checks disabled for guild ${guildId}`);
+        continue;
+      }
+
+      const intervalMs = settings.periodicCheckIntervalMinutes * 60 * 1000;
+      const timer = setInterval(async () => {
+        try {
+          logger.info(`Running periodic role check for guild ${guildId}`);
+          await periodicRoleCheck(client, guildId);
+        } catch (error) {
+          logger.error(`Error in periodic role check for guild ${guildId}:`, error);
+        }
+      }, intervalMs);
+
+      periodicTimers.set(guildId, timer);
+      const hours = (settings.periodicCheckIntervalMinutes / 60).toFixed(1);
+      logger.info(
+        `Scheduled periodic role checks for guild ${guildId} every ${hours} hours`,
+      );
+    }
+
+    if (guildMap.size === 0) {
+      logger.info('No guilds with verification rules found — no periodic checks scheduled');
+    }
+  } catch (error) {
+    logger.error('Failed to schedule periodic role checks:', error);
+  }
+}
+
+// Make it globally accessible for re-scheduling when configs change
+global.schedulePeriodicRoleChecks = schedulePeriodicRoleChecks;
+
+function deployCommands() {
+  return new Promise((resolve, reject) => {
+    const { REST, Routes } = require("discord.js");
+    const fs = require("fs");
+    const path = require("path");
+
+    const clientId = process.env.DISCORD_CLIENT_ID || Buffer.from(process.env.DISCORD_BOT_TOKEN.split(".")[0], "base64").toString("ascii");
+    const rest = new REST().setToken(process.env.DISCORD_BOT_TOKEN);
+
+    const commandsPath = path.join(__dirname, "commands");
+    const deprecatedCommandFiles = new Set([
+      "add-nft-contract.js",
+      "config-nft-role.js",
+      "remove-verification.js",
+      "set-verification-log-channel.js",
+      "setup-verification.js",
+    ]);
+
+    const commandFiles = fs
+      .readdirSync(commandsPath)
+      .filter((file) => file.endsWith(".js") && !deprecatedCommandFiles.has(file));
+
+    const commands = [];
+    for (const file of commandFiles) {
+      const command = require(path.join(commandsPath, file));
+      if ("data" in command && "execute" in command) {
+        commands.push(command.data.toJSON());
+      }
+    }
+
+    // Clean up guild-specific commands (prevents duplicates)
+    const guildIds = [process.env.DISCORD_SERVER_ID, process.env.GUILD_ID].filter(Boolean);
+    
+    const cleanupPromises = guildIds.map(async (guildId) => {
+      try {
+        const guildCommands = await rest.get(Routes.applicationGuildCommands(clientId, guildId));
+        if (guildCommands.length > 0) {
+          await rest.put(Routes.applicationGuildCommands(clientId, guildId), { body: [] });
+        }
+      } catch (err) { /* ignore */ }
+    });
+
+    Promise.all(cleanupPromises).then(async () => {
+      try {
+        const data = await rest.put(Routes.applicationCommands(clientId), { body: commands });
+        console.log(`[STARTUP] Deployed ${data.length} slash commands`);
+        resolve();
+      } catch (err) {
+        reject(err);
+      }
+    }).catch(reject);
+  });
+}
+
+// Wrap in async IIFE
+(async function() {
+  console.log(`[${new Date().toISOString()}] [STARTUP] Creating bot instance...`);
+  try {
     const bot = new LilGargsBot();
-    console.log(`[${new Date().toISOString()}] [STARTUP] Bot instance created successfully.`);
+    console.log(
+      `[${new Date().toISOString()}] [STARTUP] Bot instance created successfully.`,
+    );
 
-    console.log(`[${new Date().toISOString()}] [STARTUP] Starting bot initialization...`);
+    console.log(
+      `[${new Date().toISOString()}] [STARTUP] Deploying slash commands...`,
+    );
+    await deployCommands();
+    console.log(
+      `[${new Date().toISOString()}] [STARTUP] Slash commands deployed successfully.`,
+    );
+
+    console.log(
+      `[${new Date().toISOString()}] [STARTUP] Starting bot initialization...`,
+    );
     bot.initialize();
-    console.log(`[${new Date().toISOString()}] [STARTUP] Bot initialization called successfully.`);
-} catch (startupError) {
+    console.log(
+      `[${new Date().toISOString()}] [STARTUP] Bot initialization called successfully.`,
+    );
+  } catch (startupError) {
     const errorTime = new Date();
-    console.error(`[${errorTime.toISOString()}] [STARTUP] Critical error during bot startup:`, startupError);
-    console.error(`[${errorTime.toISOString()}] [STARTUP] Error details:`, startupError.message);
-    console.error(`[${errorTime.toISOString()}] [STARTUP] Error stack:`, startupError.stack);
+    console.error(
+      `[${errorTime.toISOString()}] [STARTUP] Critical error during bot startup:`,
+      startupError,
+    );
+    console.error(
+      `[${errorTime.toISOString()}] [STARTUP] Error details:`,
+      startupError.message,
+    );
+    console.error(
+      `[${errorTime.toISOString()}] [STARTUP] Error stack:`,
+      startupError.stack,
+    );
     process.exit(1);
-}
+  }
+})();

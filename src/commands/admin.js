@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
 const logger = require('../utils/logger');
+const { periodicRoleCheck } = require('../services/nftRoleManagerService');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -96,14 +97,24 @@ module.exports = {
                         .setMinValue(0)
                         .setMaxValue(21600)
                 )
+        )
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('recheck-roles')
+                .setDescription('Re-check all verified users\' NFT holdings and update roles')
+                .addBooleanOption(option =>
+                    option.setName('force')
+                        .setDescription('Force re-check even users recently verified (ignores cache)')
+                        .setRequired(false)
+                )
         ),
 
     async execute(interaction) {
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: 64 });
 
         try {
             const subcommand = interaction.options.getSubcommand();
-            
+
             switch (subcommand) {
                 case 'ban':
                     await this.handleBan(interaction);
@@ -120,17 +131,20 @@ module.exports = {
                 case 'slowmode':
                     await this.handleSlowmode(interaction);
                     break;
+                case 'recheck-roles':
+                    await this.handleRecheckRoles(interaction);
+                    break;
                 default:
                     await interaction.editReply({
                         content: '❌ Unknown subcommand.',
-                        ephemeral: true
+                        flags: 64
                     });
             }
         } catch (error) {
             logger.error('Error in admin command:', error);
             await interaction.editReply({
                 content: '❌ An error occurred while processing the admin command.',
-                ephemeral: true
+                flags: 64
             });
         }
     },
@@ -145,14 +159,14 @@ module.exports = {
             if (targetUser.id === interaction.user.id) {
                 return await interaction.editReply({
                     content: '❌ You cannot ban yourself.',
-                    ephemeral: true
+                    flags: 64
                 });
             }
 
             if (targetUser.id === interaction.guild.ownerId) {
                 return await interaction.editReply({
                     content: '❌ You cannot ban the server owner.',
-                    ephemeral: true
+                    flags: 64
                 });
             }
 
@@ -160,7 +174,7 @@ module.exports = {
             if (targetMember && !targetMember.bannable) {
                 return await interaction.editReply({
                     content: '❌ I cannot ban this user. They may have higher permissions than me.',
-                    ephemeral: true
+                    flags: 64
                 });
             }
 
@@ -212,7 +226,7 @@ module.exports = {
             logger.error('Error banning user:', error);
             await interaction.editReply({
                 content: '❌ Failed to ban user. Please check my permissions and try again.',
-                ephemeral: true
+                flags: 64
             });
         }
     },
@@ -226,14 +240,14 @@ module.exports = {
             if (targetUser.id === interaction.user.id) {
                 return await interaction.editReply({
                     content: '❌ You cannot kick yourself.',
-                    ephemeral: true
+                    flags: 64
                 });
             }
 
             if (targetUser.id === interaction.guild.ownerId) {
                 return await interaction.editReply({
                     content: '❌ You cannot kick the server owner.',
-                    ephemeral: true
+                    flags: 64
                 });
             }
 
@@ -241,7 +255,7 @@ module.exports = {
             if (targetMember && !targetMember.kickable) {
                 return await interaction.editReply({
                     content: '❌ I cannot kick this user. They may have higher permissions than me.',
-                    ephemeral: true
+                    flags: 64
                 });
             }
 
@@ -285,7 +299,7 @@ module.exports = {
             logger.error('Error kicking user:', error);
             await interaction.editReply({
                 content: '❌ Failed to kick user. Please check my permissions and try again.',
-                ephemeral: true
+                flags: 64
             });
         }
     },
@@ -300,14 +314,14 @@ module.exports = {
             if (targetUser.id === interaction.user.id) {
                 return await interaction.editReply({
                     content: '❌ You cannot timeout yourself.',
-                    ephemeral: true
+                    flags: 64
                 });
             }
 
             if (targetUser.id === interaction.guild.ownerId) {
                 return await interaction.editReply({
                     content: '❌ You cannot timeout the server owner.',
-                    ephemeral: true
+                    flags: 64
                 });
             }
 
@@ -315,7 +329,7 @@ module.exports = {
             if (targetMember && !targetMember.moderatable) {
                 return await interaction.editReply({
                     content: '❌ I cannot timeout this user. They may have higher permissions than me.',
-                    ephemeral: true
+                    flags: 64
                 });
             }
 
@@ -367,7 +381,7 @@ module.exports = {
             logger.error('Error timing out user:', error);
             await interaction.editReply({
                 content: '❌ Failed to timeout user. Please check my permissions and try again.',
-                ephemeral: true
+                flags: 64
             });
         }
     },
@@ -381,7 +395,7 @@ module.exports = {
             if (interaction.channel.type !== 0) {
                 return await interaction.editReply({
                     content: '❌ This command can only be used in text channels.',
-                    ephemeral: true
+                    flags: 64
                 });
             }
 
@@ -438,7 +452,7 @@ module.exports = {
             logger.error('Error purging messages:', error);
             await interaction.editReply({
                 content: '❌ Failed to purge messages. Messages older than 14 days cannot be deleted.',
-                ephemeral: true
+                flags: 64
             });
         }
     },
@@ -451,7 +465,7 @@ module.exports = {
             if (interaction.channel.type !== 0) {
                 return await interaction.editReply({
                     content: '❌ This command can only be used in text channels.',
-                    ephemeral: true
+                    flags: 64
                 });
             }
 
@@ -493,7 +507,125 @@ module.exports = {
             logger.error('Error setting slowmode:', error);
             await interaction.editReply({
                 content: '❌ Failed to set slowmode. Please check my permissions and try again.',
-                ephemeral: true
+                flags: 64
+            });
+        }
+    },
+
+    async handleRecheckRoles(interaction) {
+        const force = interaction.options.getBoolean('force') || false;
+        const guild = interaction.guild;
+        const guildId = guild.id;
+
+        const startTime = Date.now();
+        let usersChecked = 0;
+        let rolesUpdated = 0;
+
+        // Send initial status
+        await interaction.editReply({
+            content: `🔄 Starting role re-check for all verified users in **${guild.name}**... This may take a moment.`,
+        });
+
+        try {
+            // Override the periodicRoleCheck to capture stats
+            const { getUserStore, getGuildVerificationConfigStore } = require('../services/serviceFactory');
+            const NFTVerificationService = require('../services/nftVerification');
+            const userStore = getUserStore();
+
+            let verifiedUsers = [];
+            try {
+                const rows = await userStore.listVerifiedUsers();
+                verifiedUsers = rows
+                    .filter(r => r.guild_id === guildId && r.wallet_address)
+                    .map(r => ({
+                        discordId: r.discord_id,
+                        guildId: r.guild_id,
+                        walletAddress: r.wallet_address,
+                    }));
+            } catch (err) {
+                throw new Error(`Failed to fetch verified users: ${err.message}`);
+            }
+
+            if (verifiedUsers.length === 0) {
+                return await interaction.editReply({
+                    content: `ℹ️ No verified users found in this server. Nothing to re-check.`,
+                });
+            }
+
+            const contractRules = getGuildVerificationConfigStore()
+                ? await getGuildVerificationConfigStore().listByGuild(guildId)
+                : [];
+
+            if (!contractRules || contractRules.length === 0) {
+                return await interaction.editReply({
+                    content: `❌ No NFT verification rules configured for this server. Use \`/verification-config add\` to set up rules first.`,
+                });
+            }
+
+            const nftService = new NFTVerificationService();
+            const contractAddresses = contractRules.map(r => r.contractAddress).filter(Boolean);
+
+            for (const user of verifiedUsers) {
+                const member = await guild.members.fetch(user.discordId).catch(() => null);
+                if (!member) {
+                    usersChecked++;
+                    continue;
+                }
+
+                usersChecked++;
+
+                try {
+                    const result = await nftService.verifyNFTOwnership(user.walletAddress, {
+                        contractAddresses,
+                        guildId,
+                    });
+
+                    const byContract = result.byContract || {};
+
+                    for (const rule of contractRules) {
+                        const normalizedContract = rule.contractAddress?.toLowerCase?.();
+                        const ownedCount = normalizedContract ? byContract[normalizedContract] || 0 : 0;
+                        const required = rule.requiredNftCount || 1;
+
+                        let role = null;
+                        if (rule.roleId) role = guild.roles.cache.get(rule.roleId);
+                        if (!role && rule.roleName) role = guild.roles.cache.find(r => r.name === rule.roleName);
+                        if (!role) continue;
+
+                        if (ownedCount >= required && !member.roles.cache.has(role.id)) {
+                            await member.roles.add(role);
+                            rolesUpdated++;
+                        } else if (ownedCount < required && member.roles.cache.has(role.id)) {
+                            await member.roles.remove(role);
+                            rolesUpdated++;
+                        }
+                    }
+                } catch (err) {
+                    logger.warn(`Failed to recheck roles for user ${user.discordId}: ${err.message}`);
+                }
+            }
+
+            const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+
+            const embed = new EmbedBuilder()
+                .setColor('#00FF00')
+                .setTitle('✅ Role Re-Check Complete')
+                .setDescription(`NFT role assignments have been refreshed for all verified users in **${guild.name}**.`)
+                .addFields(
+                    { name: 'Users Checked', value: String(usersChecked), inline: true },
+                    { name: 'Roles Updated', value: String(rolesUpdated), inline: true },
+                    { name: 'Duration', value: `${duration}s`, inline: true },
+                    { name: 'Verification Rules', value: contractRules.length.toString(), inline: true },
+                    { name: 'Triggered By', value: interaction.user.tag, inline: true },
+                )
+                .setTimestamp();
+
+            await interaction.editReply({ embeds: [embed] });
+
+        } catch (error) {
+            logger.error('Error in handleRecheckRoles:', error);
+            await interaction.editReply({
+                content: `❌ Failed to re-check roles: ${error.message}`,
             });
         }
     },

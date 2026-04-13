@@ -1,45 +1,22 @@
 const logger = require('../utils/logger');
 const NFTVerificationService = require('./nftVerification');
 const {
-  isSupabaseEnabled,
   getUserStore,
-  getBotConfigStore,
   getGuildVerificationConfigStore,
 } = require('./serviceFactory');
 
 const userStore = getUserStore();
-const botConfigStore = getBotConfigStore();
 const guildVerificationConfigStore = getGuildVerificationConfigStore();
 
-async function fetchBotConfig(guildId) {
-  if (isSupabaseEnabled()) {
-    try {
-      return await botConfigStore.getBotConfigByGuildId(guildId);
-    } catch (error) {
-      logger.error(`Failed to fetch bot config from Supabase for guild ${guildId}: ${error.message}`);
-      return null;
-    }
-  }
+// NFT cache instance, injected from index.js
+let nftCache = null;
 
-  return botConfigStore.findOne({ guildId });
-}
-
-function extractNftVerificationConfig(botConfig) {
-  if (!botConfig) return null;
-  if (botConfig.nftVerification) {
-    return botConfig.nftVerification;
-  }
-  if (botConfig.settings?.nftVerification) {
-    return botConfig.settings.nftVerification;
-  }
-  return null;
+function setNftCache(cache) {
+  nftCache = cache;
 }
 
 function mapSupabaseUserRecord(record) {
   if (!record) return null;
-  if (!isSupabaseEnabled()) {
-    return record;
-  }
 
   return {
     discordId: record.discord_id,
@@ -49,17 +26,13 @@ function mapSupabaseUserRecord(record) {
 }
 
 async function fetchVerifiedUsers() {
-  if (isSupabaseEnabled()) {
-    try {
-      const rows = await userStore.listVerifiedUsers();
-      return rows.map(mapSupabaseUserRecord);
-    } catch (error) {
-      logger.error(`Failed to fetch verified users from Supabase: ${error.message}`);
-      return [];
-    }
+  try {
+    const rows = await userStore.listVerifiedUsers();
+    return rows.map(mapSupabaseUserRecord);
+  } catch (error) {
+    logger.error(`Failed to fetch verified users: ${error.message}`);
+    return [];
   }
-
-  return userStore.find({ isVerified: true });
 }
 
 async function assignRolesBasedOnNfts(member, walletAddress) {
@@ -75,62 +48,13 @@ async function assignRolesBasedOnNfts(member, walletAddress) {
       ? await guildVerificationConfigStore.listByGuild(member.guild.id)
       : [];
 
+    if (!contractRules || contractRules.length === 0) {
+      logger.warn(`No NFT verification rules configured for guild ${member.guild.name}. Run /verification-config add to set up rules.`);
+      return;
+    }
+
     const nftService = new NFTVerificationService();
-
-    if (contractRules && contractRules.length > 0) {
-      await applyContractRuleRoles({ member, walletAddress, contractRules, nftService });
-      return;
-    }
-
-    const botConfig = await fetchBotConfig(member.guild.id);
-    const nftVerificationConfig = extractNftVerificationConfig(botConfig);
-
-    if (
-      !nftVerificationConfig ||
-      !Array.isArray(nftVerificationConfig.roleTiers) ||
-      nftVerificationConfig.roleTiers.length === 0
-    ) {
-      logger.warn(`No NFT role tiers configured for guild ${member.guild.name}. Skipping role assignment.`);
-      return;
-    }
-
-    const verificationResult = await nftService.verifyNFTOwnership(walletAddress);
-
-    const currentNFTCount = verificationResult.nftCount;
-
-    const sortedRoles = [...nftVerificationConfig.roleTiers].sort((a, b) => b.nftCount - a.nftCount);
-
-    const rolesToKeep = new Set();
-
-    for (const roleConfig of sortedRoles) {
-      const role = member.guild.roles.cache.get(roleConfig.roleId);
-
-      if (!role) {
-        logger.warn(`Role with ID '${roleConfig.roleId}' (Name: ${roleConfig.roleName}) not found in guild ${member.guild.name}. Skipping.`);
-        continue;
-      }
-
-      if (currentNFTCount >= roleConfig.nftCount) {
-        if (!member.roles.cache.has(role.id)) {
-          try {
-            await member.roles.add(role);
-            logger.info(`Assigned role '${role.name}' to ${member.user.tag} for holding ${currentNFTCount} NFTs.`);
-          } catch (error) {
-            logger.error(`Error assigning role '${role.name}' to ${member.user.tag}: ${error.message}`);
-          }
-        }
-        rolesToKeep.add(role.id);
-      } else if (member.roles.cache.has(role.id)) {
-        try {
-          await member.roles.remove(role);
-          logger.info(
-            `Removed role '${role.name}' from ${member.user.tag} as holdings (${currentNFTCount}) no longer meet requirement (${roleConfig.nftCount}).`
-          );
-        } catch (error) {
-          logger.error(`Error removing role '${role.name}' from ${member.user.tag}: ${error.message}`);
-        }
-      }
-    }
+    await applyContractRuleRoles({ member, walletAddress, contractRules, nftService });
   } catch (error) {
     logger.error(`Error in assignRolesBasedOnNfts for guild ${member.guild.id}: ${error.message}`);
   }
@@ -141,8 +65,11 @@ async function applyContractRuleRoles({ member, walletAddress, contractRules, nf
     .map((rule) => rule.contractAddress)
     .filter(Boolean);
 
+  const guildId = member.guild.id;
+
   const verificationResult = await nftService.verifyNFTOwnership(walletAddress, {
     contractAddresses,
+    guildId,
   });
 
   const byContract = verificationResult.byContract || {};
@@ -190,11 +117,20 @@ async function applyContractRuleRoles({ member, walletAddress, contractRules, nf
   }
 }
 
-async function periodicRoleCheck(client) {
-  logger.info('Performing periodic NFT role check for all verified users...');
+async function periodicRoleCheck(client, guildId = null) {
+  if (guildId) {
+    logger.info(`Performing periodic NFT role check for guild ${guildId}...`);
+  } else {
+    logger.info('Performing periodic NFT role check for all verified users...');
+  }
 
   try {
-    const verifiedUsers = await fetchVerifiedUsers();
+    let verifiedUsers = await fetchVerifiedUsers();
+
+    // Filter by guild if specified
+    if (guildId) {
+      verifiedUsers = verifiedUsers.filter(u => u.guildId === guildId);
+    }
 
     if (verifiedUsers.length === 0) {
       logger.info('No verified users found for periodic role check.');
@@ -230,4 +166,5 @@ async function periodicRoleCheck(client) {
 module.exports = {
   assignRolesBasedOnNfts,
   periodicRoleCheck,
+  setNftCache,
 };

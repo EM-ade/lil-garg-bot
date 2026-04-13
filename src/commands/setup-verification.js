@@ -19,14 +19,14 @@ module.exports = {
             if (!interaction.member.permissions.has('Administrator')) {
                 return await interaction.reply({
                     content: '❌ You need administrator permissions to set up verification.',
-                    ephemeral: true
+                    flags: 64
                 });
             }
 
             const channel = interaction.options.getChannel('channel');
             
             // Defer the reply since this might take some time
-            await interaction.deferReply({ ephemeral: true });
+            await interaction.deferReply({ flags: 64 });
 
             // Create verification embed with image
             const embed = new EmbedBuilder()
@@ -93,7 +93,7 @@ module.exports = {
                 try {
                     await interaction.followUp({
                         content: '❌ An error occurred while setting up the verification system. Please try again later.',
-                        ephemeral: true
+                        flags: 64
                     });
                 } catch (followUpError) {
                     console.error('Failed to send follow-up message:', followUpError);

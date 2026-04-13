@@ -25,7 +25,7 @@ module.exports = {
             if (!botConfig) {
                 return await interaction.reply({
                     content: '❌ Bot configuration not found. Please run `/config` first.',
-                    ephemeral: true
+                    flags: 64
                 });
             }
 
@@ -40,7 +40,7 @@ module.exports = {
             if (!hasFounderRole && !member.permissions.has(PermissionFlagsBits.Administrator)) {
                 return await interaction.reply({
                     content: '❌ Only founders can initiate lockdown.',
-                    ephemeral: true
+                    flags: 64
                 });
             }
 
@@ -137,7 +137,7 @@ module.exports = {
             logger.error('Error during lockdown:', error);
             await interaction.editReply({
                 content: '❌ An error occurred while initiating lockdown.',
-                ephemeral: true
+                flags: 64
             });
         }
     },

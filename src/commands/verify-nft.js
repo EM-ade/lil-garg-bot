@@ -5,6 +5,9 @@ const {
   VerificationSessionError,
 } = require('../services/verificationSessionService');
 const { registerInteraction } = require('../services/sessionInteractionRegistry');
+const { getGuildVerificationConfigStore } = require('../services/serviceFactory');
+
+const guildVerificationConfigStore = getGuildVerificationConfigStore();
 
 function buildVerificationLink(token) {
   const baseUrl = config.frontend?.url?.replace(/\/$/, '') || '';
@@ -61,7 +64,24 @@ module.exports = {
     async execute(interaction) {
         try {
             // Immediately defer the reply to prevent interaction timeout
-            await interaction.deferReply({ ephemeral: true });
+            await interaction.deferReply({ flags: 64 });
+
+            // Check if guild has Helius API key configured (enforced - no fallback)
+            if (guildVerificationConfigStore) {
+                try {
+                    const settings = await guildVerificationConfigStore.getGuildSettings(interaction.guildId);
+                    if (!settings?.heliusApiKey) {
+                        await interaction.editReply({
+                            content: '❌ This server has not configured a Helius API key for NFT verification.\n\n' +
+                                'Please ask an admin to set up the Helius configuration.',
+                            flags: 64,
+                        });
+                        return;
+                    }
+                } catch (err) {
+                    console.error('Error checking guild Helius key:', err);
+                }
+            }
 
             // Create verification embed with image
             const embed = new EmbedBuilder()
@@ -100,7 +120,7 @@ module.exports = {
             try {
                 await interaction.followUp({
                     content: '❌ An error occurred while starting the verification process. Please try again later.',
-                    ephemeral: true,
+                    flags: 64,
                 });
             } catch (followUpError) {
                 console.error('Failed to send follow-up message:', followUpError);
@@ -111,7 +131,7 @@ module.exports = {
     // Handle button interaction
     async handleButtonInteraction(interaction) {
         try {
-            await interaction.deferReply({ ephemeral: true });
+            await interaction.deferReply({ flags: 64 });
 
             const session = await verificationSessionService.createSession({
                 discordId: interaction.user.id,
@@ -144,13 +164,13 @@ module.exports = {
             await interaction.editReply({
                 embeds: [embed],
                 components,
-                ephemeral: true,
+                flags: 64,
             });
         } catch (error) {
             if (error instanceof VerificationSessionError) {
                 await interaction.editReply({
                     content: `❌ ${error.message}`,
-                    ephemeral: true,
+                    flags: 64,
                 });
                 return;
             }
@@ -158,7 +178,7 @@ module.exports = {
             console.error('Error creating verification session from interactive button:', error);
             await interaction.editReply({
                 content: '❌ Failed to start verification session. Please try again later.',
-                ephemeral: true,
+                flags: 64,
             });
         }
     },

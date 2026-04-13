@@ -50,7 +50,7 @@ module.exports = {
       if (!botConfig?.battleSystem?.enabled) {
         return await interaction.reply({
           content: "❌ Battle system is not enabled in this server.",
-          ephemeral: true,
+          flags: 64,
         });
       }
 
@@ -72,7 +72,7 @@ module.exports = {
       logger.error(`Error in battle command (${subcommand}):`, error);
       await interaction.reply({
         content: "❌ An error occurred while processing your request.",
-        ephemeral: true,
+        flags: 64,
       });
     }
   },
@@ -83,7 +83,7 @@ module.exports = {
     if (opponent.id === userId) {
       return await interaction.reply({
         content: "❌ You cannot battle yourself!",
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -92,7 +92,7 @@ module.exports = {
     if (existingBattle) {
       return await interaction.reply({
         content: "❌ You are already in a battle!",
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -100,7 +100,7 @@ module.exports = {
     if (opponentBattle) {
       return await interaction.reply({
         content: "❌ Your opponent is already in a battle!",
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -111,14 +111,14 @@ module.exports = {
     if (!challengerPet) {
       return await interaction.reply({
         content: "❌ You need a pet to battle! Use `/pet adopt [name]` to get one.",
-        ephemeral: true,
+        flags: 64,
       });
     }
 
     if (!opponentPet) {
       return await interaction.reply({
         content: "❌ Your opponent needs a pet to battle!",
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -185,21 +185,21 @@ module.exports = {
     if (!battle) {
       return await interaction.reply({
         content: "❌ Battle not found!",
-        ephemeral: true,
+        flags: 64,
       });
     }
 
     if (battle.opponent.id !== userId) {
       return await interaction.reply({
         content: "❌ This battle is not for you!",
-        ephemeral: true,
+        flags: 64,
       });
     }
 
     if (battle.status !== "pending") {
       return await interaction.reply({
         content: "❌ This battle is no longer pending!",
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -293,7 +293,7 @@ module.exports = {
     if (userPets.length === 0) {
       return await interaction.reply({
         content: "❌ You don't have any pets! Use `/pet adopt [name]` to get one.",
-        ephemeral: true,
+        flags: 64,
       });
     }
 

@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lil Garg Bot API</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #fff;
+        }
+        .container {
+            text-align: center;
+            padding: 40px;
+            max-width: 600px;
+        }
+        h1 { font-size: 2.5rem; margin-bottom: 10px; }
+        .emoji { font-size: 4rem; display: block; margin-bottom: 20px; }
+        .status {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 12px;
+            margin: 30px 0;
+        }
+        .status a {
+            color: #4ade80;
+            text-decoration: none;
+        }
+        .status a:hover { text-decoration: underline; }
+        .endpoints {
+            text-align: left;
+            background: rgba(0,0,0,0.3);
+            padding: 20px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 14px;
+        }
+        .endpoints li {
+            list-style: none;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .endpoints li:last-child { border-bottom: none; }
+        .method { color: #fbbf24; font-weight: bold; }
+        footer { margin-top: 40px; opacity: 0.6; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <span class="emoji">🐲</span>
+        <h1>Lil Garg Bot API</h1>
+        <p style="color: #9ca3af; margin-top: 10px;">Vercel HTTPS Proxy</p>
+        
+        <div class="status">
+            <h3 style="margin-bottom: 15px;">Backend Status</h3>
+            <p style="margin: 10px 0;">Direct: <a href="http://2.56.246.119:30391/health" target="_blank">http://2.56.246.119:30391/health</a></p>
+            <p style="margin: 10px 0;">Proxy: <a href="/api/health" target="_blank">/api/health</a></p>
+        </div>
+
+        <div class="endpoints">
+            <strong style="color: #4ade80; display: block; margin-bottom: 15px;">API Endpoints</strong>
+            <li><span class="method">POST</span> /api/verification/session</li>
+            <li><span class="method">GET</span> /api/verification/session/:token</li>
+            <li><span class="method">POST</span> /api/verification/session/verify</li>
+            <li><span class="method">POST</span> /api/verification/verify</li>
+            <li><span class="method">POST</span> /api/verification/callback</li>
+        </div>
+
+        <footer>
+            <p>Lil Gargs NFT Verification Bot</p>
+            <p style="margin-top: 5px;">Powered by Vercel + Orihost</p>
+        </footer>
+    </div>
+</body>
+</html>

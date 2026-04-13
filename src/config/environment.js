@@ -16,6 +16,7 @@ const optionalEnvVars = [
   "SUPABASE_URL",
   "SUPABASE_SERVICE_ROLE_KEY",
   "USE_SUPABASE",
+  "REDIS_URL",
 ];
 
 function validateEnvironment() {
@@ -103,6 +104,10 @@ const config = {
 
   features: {
     useSupabase: process.env.USE_SUPABASE === "true",
+  },
+
+  redis: {
+    url: process.env.REDIS_URL || "redis://localhost:6379",
   },
 };
 

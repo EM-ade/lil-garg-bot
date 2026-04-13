@@ -4,15 +4,51 @@ const config = require("../config/environment");
 const logger = require("../utils/logger");
 const BotConfig = require('../database/models/BotConfig');
 const heliusRateLimiter = require("../utils/heliusRateLimiter");
+const { getGuildVerificationConfigStore } = require('../services/serviceFactory');
 
 class NFTVerificationService {
-  constructor(client) {
+  constructor(client, nftCache = null) {
     this.heliusApiKey = config.nft.heliusApiKey;
     this.contractAddress = config.nft.contractAddress;
     this.verifiedCreator = config.nft.verifiedCreator;
     this.rpcUrl = `https://mainnet.helius-rpc.com/?api-key=${this.heliusApiKey}`;
     this.nftConfig = require('../config/nftConfig');
     this.client = client;
+    this.nftCache = nftCache;
+    this.guildConfigStore = getGuildVerificationConfigStore();
+  }
+
+  /**
+   * Resolve the Helius API key for a guild.
+   * Enforced: throws error if no per-server key is set (no fallback).
+   */
+  async resolveHeliusApiKey(guildId) {
+    if (!guildId) {
+      throw new Error('No guild ID provided for Helius API key resolution');
+    }
+
+    try {
+      if (this.guildConfigStore) {
+        const settings = await this.guildConfigStore.getGuildSettings(guildId);
+        if (settings.heliusApiKey) {
+          return settings.heliusApiKey;
+        }
+      }
+    } catch (error) {
+      logger.warn(`Failed to fetch guild Helius key for ${guildId}: ${error.message}`);
+    }
+
+    throw new Error(
+      `This server has not configured a Helius API key for NFT verification. ` +
+      'Please ask an admin to set up the Helius configuration.'
+    );
+  }
+
+  /**
+   * Build the RPC URL for a given API key.
+   */
+  buildRpcUrl(apiKey) {
+    return `https://mainnet.helius-rpc.com/?api-key=${apiKey}`;
   }
 
   async getLogChannel(guildId) {
@@ -91,7 +127,9 @@ class NFTVerificationService {
   /**
    * Make a rate-limited Helius API call
    */
-  async callHeliusApi(method, params) {
+  async callHeliusApi(method, params, apiKey) {
+    const key = apiKey || this.heliusApiKey;
+    const rpcUrl = this.buildRpcUrl(key);
     const payload = {
       jsonrpc: "2.0",
       id: "nft-verification",
@@ -99,7 +137,7 @@ class NFTVerificationService {
       params,
     };
     const call = async () => {
-      const response = await axios.post(this.rpcUrl, payload, {
+      const response = await axios.post(rpcUrl, payload, {
         headers: { "Content-Type": "application/json" },
       });
       if (response.data.error) {
@@ -107,13 +145,13 @@ class NFTVerificationService {
       }
       return response.data.result || {};
     };
-    return await heliusRateLimiter.limit(call);
+    return await heliusRateLimiter.limit(call, key);
   }
 
   /**
    * Get all NFTs owned by a wallet address with pagination support
    */
-  async getNFTsByOwner(walletAddress) {
+  async getNFTsByOwner(walletAddress, apiKey) {
     try {
       if (!this.isValidSolanaAddress(walletAddress)) {
         throw new Error("Invalid Solana wallet address");
@@ -135,7 +173,7 @@ class NFTVerificationService {
               showNativeBalance: false,
               showInscription: false,
             },
-          });
+          }, apiKey);
         };
 
         const result = await this.retryWithBackoff(fetchNFTs);
@@ -296,60 +334,86 @@ class NFTVerificationService {
 
   /**
    * Verify NFT ownership for a user
+   * Supports caching and per-server Helius API keys.
+   * When contractAddresses are provided, uses searchAssets (more efficient).
    */
-  async verifyNFTOwnership(walletAddress, { contractAddresses, verifiedCreators } = {}) {
+  async verifyNFTOwnership(walletAddress, { contractAddresses, verifiedCreators, guildId } = {}) {
     try {
-      const allNFTs = await this.getNFTsByOwner(walletAddress);
-      logger.info(`Verifying NFT ownership for ${walletAddress}: ${allNFTs.length} total NFTs fetched`);
-
+      const apiKey = await this.resolveHeliusApiKey(guildId);
       const normalizedContracts = (contractAddresses || [])
         .filter(Boolean)
         .map((addr) => addr.toLowerCase());
 
-      const normalizedCreators = (verifiedCreators || [])
-        .filter(Boolean)
-        .map((addr) => addr.toLowerCase());
+      // Check cache for each contract address
+      if (this.nftCache && normalizedContracts.length > 0) {
+        const cachedResults = [];
+        let allCached = true;
 
-      const matchedNFTs = [];
-      const byContract = {};
-
-      for (const nft of allNFTs) {
-        const identifiers = this.extractContractIdentifiers(nft);
-        const creatorMatch =
-          normalizedCreators.length > 0
-            ? nft.creators?.some((creator) =>
-                normalizedCreators.includes(String(creator.address).toLowerCase()) &&
-                creator.verified
-              )
-            : false;
-
-        let contractMatch = false;
-        let matchedKey = null;
-
-        if (normalizedContracts.length > 0) {
-          for (const identifier of identifiers) {
-            if (normalizedContracts.includes(identifier)) {
-              contractMatch = true;
-              matchedKey = identifier;
-              break;
-            }
+        for (const contract of normalizedContracts) {
+          const cached = await this.nftCache.get(guildId, walletAddress, contract);
+          if (cached) {
+            cachedResults.push(cached);
+          } else {
+            allCached = false;
           }
         }
 
-        const defaultMatch =
-          normalizedContracts.length === 0 &&
-          normalizedCreators.length === 0 &&
-          this.matchesDefaultConfig(nft);
-
-        if (!(contractMatch || creatorMatch || defaultMatch)) {
-          continue;
+        if (allCached && cachedResults.length > 0) {
+          logger.info(`Cache hit for all contracts for wallet ${walletAddress} in guild ${guildId}`);
+          return this.mergeCachedResults(cachedResults, walletAddress);
         }
+      }
 
-        matchedNFTs.push(nft);
+      let matchedNFTs = [];
+      const byContract = {};
 
-        const key = matchedKey || (defaultMatch && this.contractAddress ? this.contractAddress.toLowerCase() : null);
-        if (key) {
-          byContract[key] = (byContract[key] || 0) + 1;
+      // Use searchAssets for each contract (more efficient than getAssetsByOwner)
+      if (normalizedContracts.length > 0) {
+        for (const contract of normalizedContracts) {
+          const nfts = await this.getNFTsBySearch(walletAddress, contract, apiKey);
+          matchedNFTs = matchedNFTs.concat(nfts);
+          byContract[contract] = nfts.length;
+
+          // Cache result for this contract
+          if (this.nftCache && guildId) {
+            await this.nftCache.set(guildId, walletAddress, contract, {
+              nfts,
+              count: nfts.length,
+              contract,
+            });
+          }
+        }
+      } else {
+        // Fallback: fetch ALL NFTs and filter client-side
+        const allNFTs = await this.getNFTsByOwner(walletAddress, apiKey);
+        logger.info(`Verifying NFT ownership for ${walletAddress}: ${allNFTs.length} total NFTs fetched`);
+
+        const normalizedCreators = (verifiedCreators || [])
+          .filter(Boolean)
+          .map((addr) => addr.toLowerCase());
+
+        for (const nft of allNFTs) {
+          const identifiers = this.extractContractIdentifiers(nft);
+          const creatorMatch =
+            normalizedCreators.length > 0
+              ? nft.creators?.some((creator) =>
+                  normalizedCreators.includes(String(creator.address).toLowerCase()) &&
+                  creator.verified
+                )
+              : false;
+
+          const defaultMatch = this.matchesDefaultConfig(nft);
+
+          if (!(creatorMatch || defaultMatch)) {
+            continue;
+          }
+
+          matchedNFTs.push(nft);
+
+          const key = defaultMatch && this.contractAddress ? this.contractAddress.toLowerCase() : null;
+          if (key) {
+            byContract[key] = (byContract[key] || 0) + 1;
+          }
         }
       }
 
@@ -382,6 +446,66 @@ class NFTVerificationService {
     } catch (error) {
       logger.error("Error verifying NFT ownership:", error.message);
       throw error;
+    }
+  }
+
+  /**
+   * Merge cached results into a single verification result.
+   */
+  mergeCachedResults(cachedResults, walletAddress) {
+    const allNFTs = [];
+    const byContract = {};
+
+    for (const cached of cachedResults) {
+      allNFTs.push(...cached.nfts);
+      byContract[cached.contract] = cached.count;
+    }
+
+    return {
+      isVerified: allNFTs.length > 0,
+      nftCount: allNFTs.length,
+      nfts: allNFTs,
+      walletAddress: walletAddress,
+      verifiedAt: new Date(),
+      byContract,
+      fromCache: true,
+    };
+  }
+
+  /**
+   * Search for NFTs by collection using searchAssets (efficient).
+   */
+  async getNFTsBySearch(walletAddress, contractAddress, apiKey) {
+    try {
+      let allNFTs = [];
+      let page = 1;
+      const limit = 1000;
+
+      while (true) {
+        const fetchNFTs = async () => {
+          return await this.callHeliusApi("searchAssets", {
+            ownerAddress: walletAddress,
+            grouping: ["collection", contractAddress],
+            page: page,
+            limit: limit,
+          }, apiKey);
+        };
+
+        const result = await this.retryWithBackoff(fetchNFTs);
+        const items = result.items || [];
+
+        allNFTs = allNFTs.concat(items);
+
+        if (items.length < limit) break;
+
+        page++;
+        await new Promise(resolve => setTimeout(resolve, 200));
+      }
+
+      return allNFTs;
+    } catch (error) {
+      logger.error(`Error searching assets for contract ${contractAddress}:`, error.message);
+      return [];
     }
   }
 

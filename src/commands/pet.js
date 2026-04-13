@@ -62,7 +62,7 @@ module.exports = {
       if (!botConfig?.petSystem?.enabled) {
         return await interaction.reply({
           content: "❌ Pet system is not enabled in this server.",
-          ephemeral: true,
+          flags: 64,
         });
       }
 
@@ -90,7 +90,7 @@ module.exports = {
       logger.error(`Error in pet command (${subcommand}):`, error);
       await interaction.reply({
         content: "❌ An error occurred while processing your request.",
-        ephemeral: true,
+        flags: 64,
       });
     }
   },
@@ -103,7 +103,7 @@ module.exports = {
     if (existingPet) {
       return await interaction.reply({
         content: "❌ You already have a pet! Use `/pet status` to check on them.",
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -113,7 +113,7 @@ module.exports = {
     if (userPetCount >= (botConfig?.petSystem?.maxPetsPerUser || 1)) {
       return await interaction.reply({
         content: "❌ You have reached the maximum number of pets allowed.",
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -140,7 +140,7 @@ module.exports = {
     if (!pet) {
       return await interaction.reply({
         content: "❌ You don't have a pet! Use `/pet adopt [name]` to get one.",
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -148,7 +148,7 @@ module.exports = {
       const timeLeft = this.getTimeUntilAction(pet.cooldowns.lastFed, 4 * 60 * 60 * 1000);
       return await interaction.reply({
         content: `❌ ${pet.name} is not hungry yet. Try again in ${timeLeft}.`,
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -171,7 +171,7 @@ module.exports = {
     if (!pet) {
       return await interaction.reply({
         content: "❌ You don't have a pet! Use `/pet adopt [name]` to get one.",
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -179,14 +179,14 @@ module.exports = {
       const timeLeft = this.getTimeUntilAction(pet.cooldowns.lastTrained, 6 * 60 * 60 * 1000);
       return await interaction.reply({
         content: `❌ ${pet.name} is too tired to train. Try again in ${timeLeft}.`,
-        ephemeral: true,
+        flags: 64,
       });
     }
 
     if (pet.stats.energy < 20) {
       return await interaction.reply({
         content: `❌ ${pet.name} is too tired to train. Feed them first!`,
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -211,7 +211,7 @@ module.exports = {
     if (!pet) {
       return await interaction.reply({
         content: "❌ You don't have a pet! Use `/pet adopt [name]` to get one.",
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -219,7 +219,7 @@ module.exports = {
       const timeLeft = this.getTimeUntilAction(pet.cooldowns.lastPlayed, 2 * 60 * 60 * 1000);
       return await interaction.reply({
         content: `❌ ${pet.name} is not in the mood to play. Try again in ${timeLeft}.`,
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -242,7 +242,7 @@ module.exports = {
     if (!pet) {
       return await interaction.reply({
         content: "❌ You don't have a pet! Use `/pet adopt [name]` to get one.",
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -267,7 +267,7 @@ module.exports = {
     if (!pet) {
       return await interaction.reply({
         content: "❌ You don't have a pet! Use `/pet adopt [name]` to get one.",
-        ephemeral: true,
+        flags: 64,
       });
     }
 

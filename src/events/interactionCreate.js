@@ -20,7 +20,7 @@ module.exports = {
       if (interaction.isRepliable()) {
         await interaction.reply({
           content: 'Bot is still initializing. Please try again in a moment.',
-          ephemeral: true
+          flags: 64
         });
       }
       return;
@@ -65,7 +65,7 @@ async function handleCommandInteraction(interaction, client) {
     logger.error('client.commands collection is undefined!');
     await interaction.reply({
       content: "Bot is still starting up. Please try again in a moment.",
-      ephemeral: true,
+      flags: 64,
     });
     return;
   }
@@ -80,7 +80,7 @@ async function handleCommandInteraction(interaction, client) {
     logger.warn(`Commands collection size: ${client.commands.size}`);
     await interaction.reply({
       content: "This command is not currently available.",
-      ephemeral: true,
+      flags: 64,
     });
     return;
   }
@@ -119,7 +119,7 @@ async function handleSelectMenuInteraction(interaction, client) {
       // Pet system select menus will be implemented later
       await interaction.reply({
         content: "Pet system select menus are not yet implemented.",
-        ephemeral: true,
+        flags: 64,
       });
       break;
 
@@ -127,7 +127,7 @@ async function handleSelectMenuInteraction(interaction, client) {
       // Battle system select menus will be implemented later
       await interaction.reply({
         content: "Battle system select menus are not yet implemented.",
-        ephemeral: true,
+        flags: 64,
       });
       break;
 
@@ -135,7 +135,7 @@ async function handleSelectMenuInteraction(interaction, client) {
       // Configuration select menus will be implemented later
       await interaction.reply({
         content: "Configuration select menus are not yet implemented.",
-        ephemeral: true,
+        flags: 64,
       });
       break;
 
@@ -143,7 +143,7 @@ async function handleSelectMenuInteraction(interaction, client) {
       logger.warn(`Unknown select menu type: ${type}`);
       await interaction.reply({
         content: "This select menu is not configured correctly.",
-        ephemeral: true,
+        flags: 64,
       });
   }
 }
@@ -174,7 +174,7 @@ async function handleModalInteraction(interaction, client) {
       // Configuration modals will be implemented later
       await interaction.reply({
         content: "Configuration modals are not yet implemented.",
-        ephemeral: true,
+        flags: 64,
       });
       break;
 
@@ -182,7 +182,7 @@ async function handleModalInteraction(interaction, client) {
       logger.warn(`Unknown modal type: ${type}`);
       await interaction.reply({
         content: "This modal is not configured correctly.",
-        ephemeral: true,
+        flags: 64,
       });
   }
 }
@@ -255,7 +255,7 @@ async function handlePetModal(interaction, action) {
         ]
       );
 
-      await interaction.reply({ embeds: [adoptEmbed], ephemeral: true });
+      await interaction.reply({ embeds: [adoptEmbed], flags: 64 });
     } catch (error) {
       await handleError(error, interaction);
     }
@@ -291,7 +291,7 @@ async function handleNftModal(interaction, action) {
         );
       }
       
-      await interaction.deferReply({ ephemeral: true });
+      await interaction.deferReply({ flags: 64 });
       
       // Verify NFT ownership
       const verificationResult = await verifyNftOwnership(walletAddress);
@@ -398,7 +398,7 @@ async function handleTicketModal(interaction, action) {
       const validPriorities = ['low', 'medium', 'high'];
       const ticketPriority = validPriorities.includes(priority) ? priority : 'low';
       
-      await interaction.deferReply({ ephemeral: true });
+      await interaction.deferReply({ flags: 64 });
       
       // Generate ticket number
       const ticketCount = await Ticket.countDocuments({ guildId });

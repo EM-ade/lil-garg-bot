@@ -47,7 +47,7 @@ module.exports = {
         const message = interaction.options.getString("message");
         logger.info(`[WelcomeSetup] Channel: #${channel.name}, Message: "${message}"`);
 
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: 64 });
 
         let botConfig = await BotConfig.findOne({ guildId });
         if (!botConfig) {
@@ -83,7 +83,7 @@ module.exports = {
         await interaction.editReply({ embeds: [embed] });
 
       } else if (subcommand === "disable") {
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: 64 });
         
         const botConfig = await BotConfig.findOne({ guildId });
         if (botConfig) {
@@ -101,7 +101,7 @@ module.exports = {
         await interaction.editReply({ embeds: [embed] });
 
       } else if (subcommand === "test") {
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: 64 });
         const botConfig = await BotConfig.findOne({ guildId });
 
         if (!botConfig || !botConfig.welcomeChannelId || !botConfig.behavior?.welcomeMessage?.enabled) {
@@ -140,7 +140,7 @@ module.exports = {
       if (interaction.deferred || interaction.replied) {
         await interaction.editReply({ embeds: [errorEmbed] });
       } else {
-        await interaction.reply({ embeds: [errorEmbed], ephemeral: true });
+        await interaction.reply({ embeds: [errorEmbed], flags: 64 });
       }
     }
   },

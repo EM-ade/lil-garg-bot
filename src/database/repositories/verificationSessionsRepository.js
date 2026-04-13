@@ -2,7 +2,11 @@ const crypto = require('crypto');
 const { getSupabaseClient } = require('../supabaseClient');
 
 function getClient() {
-  return getSupabaseClient();
+  const client = getSupabaseClient();
+  if (!client) {
+    throw new Error('Supabase client is not available. Check SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.');
+  }
+  return client;
 }
 
 function hashToken(token) {
